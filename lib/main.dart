@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'pages/login_page.dart';
 import 'pages/register_page.dart';
-import 'pages/home_page.dart'; // Tambah import untuk Home
 
 void main() {
   runApp(const MainApp());
@@ -15,11 +14,11 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'My App',
-      initialRoute: '/login',
+      home: const LoginPage(), // LoginPage sebagai halaman awal
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
-        '/home': (context) => const HomePage(), // Route home
+        // Jangan daftarkan MainPage di routes karena butuh token
       },
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../main_page.dart'; // Pastikan MainPage sudah dibuat
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -37,7 +38,11 @@ class _LoginPageState extends State<LoginPage> {
         await prefs.setString("token", token);
         await prefs.setString("name", name);
 
-        Navigator.pushReplacementNamed(context, '/home');
+        Navigator.pushReplacement(
+  context,
+  MaterialPageRoute(builder: (context) => MainPage(token: token)),
+);
+
       } else {
         setState(() {
           _errorMessage = result["message"] ?? "Email atau password salah";
