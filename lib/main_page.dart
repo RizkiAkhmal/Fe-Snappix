@@ -4,6 +4,7 @@ import 'package:fe_snappix/pages/home_page.dart';
 import 'package:fe_snappix/pages/profile_page.dart';
 import 'package:fe_snappix/pages/search_page.dart';
 import 'package:fe_snappix/services/post_service.dart';
+import 'package:fe_snappix/config/api_config.dart';
 import 'package:flutter/material.dart';
 
 class MainPage extends StatefulWidget {
@@ -33,7 +34,7 @@ class _MainPageState extends State<MainPage> {
   ];
 
   // Inisialisasi PostService dengan baseUrl API
-  final PostService _postService = PostService(baseUrl: ''); // Ganti sesuai URL API kamu
+  final PostService _postService = PostService(baseUrl: ApiConfig.baseUrl);
 
   void _showCreateModal() {
     showModalBottomSheet(
@@ -127,7 +128,7 @@ class _MainPageState extends State<MainPage> {
         centerTitle: true,
         backgroundColor: Colors.orange,
         actions: [
-          if (_currentIndex == 2) // Tombol tambah hanya muncul di index 2
+          if (_currentIndex == 2)
             IconButton(
               icon: const Icon(Icons.add_box),
               onPressed: _showCreateModal,
@@ -142,7 +143,7 @@ class _MainPageState extends State<MainPage> {
         onTap: (index) {
           setState(() {
             if (index == 2) {
-              _showCreateModal(); // Tombol tengah memunculkan modal
+              _showCreateModal();
             } else {
               _currentIndex = index;
             }

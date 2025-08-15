@@ -4,6 +4,7 @@ class Post {
   final String imageUrl;
   final int? albumId;
   final String? albumName; // nama album opsional
+  final String? userName; // nama user opsional
   final String createdAt;
 
   Post({
@@ -12,38 +13,92 @@ class Post {
     required this.imageUrl,
     this.albumId,
     this.albumName,
+    this.userName,
     required this.createdAt,
   });
 
-  /// Membuat object Post dari JSON
+  static int? _asInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  static String _asString(dynamic value, {String fallback = ''}) {
+    if (value == null) return fallback;
+    return value.toString();
+  }
+
   factory Post.fromJson(Map<String, dynamic> json) {
+    final int id = _asInt(json['id']) ?? 0;
+
+    final String caption = _asString(
+      json['caption'] ?? json['judul'],
+      fallback: '',
+    );
+
+    final String imageUrl = _asString(
+      json['image_url'] ?? json['image'] ?? json['photo_url'] ?? json['photo'],
+      fallback: '',
+    );
+
+    final int? albumId =
+        _asInt(json['album_id'] ?? json['albumId'] ?? json['id_album']);
+
+    String? albumName;
+    final dynamic albumObj = json['album'];
+    if (albumObj is Map<String, dynamic>) {
+      albumName = _asString(
+        albumObj['name'] ?? albumObj['nama_album'] ?? albumObj['title'],
+        fallback: '',
+      );
+      if (albumName.isEmpty) albumName = null;
+    } else {
+      final directName = json['album_name'] ?? json['nama_album'];
+      if (directName != null) {
+        final s = _asString(directName);
+        albumName = s.isEmpty ? null : s;
+      }
+    }
+
+    // Ambil nama user dari relasi
+    String? userName;
+    final dynamic userObj = json['user'];
+    if (userObj is Map<String, dynamic>) {
+      final s = _asString(userObj['name']);
+      userName = s.isEmpty ? null : s;
+    }
+
+    final String createdAt =
+        _asString(json['created_at'] ?? json['createdAt'], fallback: '');
+
     return Post(
-      id: json['id'] as int,
-      caption: json['caption'] as String? ?? '',
-      imageUrl: json['image_url'] as String? ?? '',
-      albumId: json['album_id'] as int?,
-      albumName: json['album'] != null ? json['album']['name'] as String : null,
-      createdAt: json['created_at'] as String? ?? '',
+      id: id,
+      caption: caption,
+      imageUrl: imageUrl,
+      albumId: albumId,
+      albumName: albumName,
+      userName: userName,
+      createdAt: createdAt,
     );
   }
 
-  /// Mengubah object Post menjadi JSON
   Map<String, dynamic> toJson() {
     return {
       'caption': caption,
       'image_url': imageUrl,
       'album_id': albumId,
-      // albumName biasanya tidak dikirim ke server, cukup albumId
     };
   }
 
-  /// Membuat copy Post dengan beberapa field diubah (opsional)
   Post copyWith({
     int? id,
     String? caption,
     String? imageUrl,
     int? albumId,
     String? albumName,
+    String? userName,
     String? createdAt,
   }) {
     return Post(
@@ -52,6 +107,7 @@ class Post {
       imageUrl: imageUrl ?? this.imageUrl,
       albumId: albumId ?? this.albumId,
       albumName: albumName ?? this.albumName,
+      userName: userName ?? this.userName,
       createdAt: createdAt ?? this.createdAt,
     );
   }

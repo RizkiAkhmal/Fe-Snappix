@@ -25,6 +25,7 @@ class _AddPostPageState extends State<AddPostPage> {
   int? _selectedAlbumId; // pilih album sebagai id
   List<Map<String, dynamic>> _albums = [];
   bool _isLoadingAlbums = true;
+  bool _isSubmitting = false; // tambah loading state
 
   final ImagePicker _picker = ImagePicker();
 
@@ -63,6 +64,7 @@ class _AddPostPageState extends State<AddPostPage> {
 
   Future<void> _submitPost() async {
     if (_formKey.currentState!.validate()) {
+      setState(() => _isSubmitting = true);
       try {
         final imageFile = kIsWeb ? null : _selectedImage;
 
@@ -86,6 +88,8 @@ class _AddPostPageState extends State<AddPostPage> {
       } catch (e) {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('Gagal membuat post: $e')));
+      } finally {
+        setState(() => _isSubmitting = false);
       }
     }
   }
@@ -159,10 +163,15 @@ class _AddPostPageState extends State<AddPostPage> {
     border: OutlineInputBorder(),
   ),
   items: _albums
-      .map((album) => DropdownMenuItem<int>(
-            value: album['id'] as int,
-            child: Text(album['name'] as String),
-          ))
+      .map((album) {
+        final dynamic rawId = album['id'];
+        final int id = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '') ?? 0;
+        final String name = (album['name'] ?? '').toString();
+        return DropdownMenuItem<int>(
+          value: id,
+          child: Text(name),
+        );
+      })
       .toList(),
   onChanged: (value) => setState(() => _selectedAlbumId = value),
   isExpanded: true,
@@ -170,12 +179,21 @@ class _AddPostPageState extends State<AddPostPage> {
 
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: _submitPost,
+                        onPressed: _isSubmitting ? null : _submitPost,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.orange,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
-                        child: const Text("Simpan Postingan", style: TextStyle(fontSize: 16)),
+                        child: _isSubmitting
+                            ? const SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text("Simpan Postingan", style: TextStyle(fontSize: 16)),
                       ),
                     ],
                   ),

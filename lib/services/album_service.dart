@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:fe_snappix/models/album_model.dart'; // pastikan model Album sudah dibuat
+import 'package:fe_snappix/models/album_model.dart'; 
 
 class AlbumService {
-  static const String baseUrl = "http://127.0.0.1:8000/api/albums"; // ganti dengan base URL
-  final String token; // untuk auth sanctum
+  static const String baseUrl = "http://127.0.0.1:8000/api/albums"; 
+  final String token; 
 
   AlbumService({required this.token});
 
