@@ -1,10 +1,16 @@
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+
 class ApiConfig {
-  // Ganti URL ini sesuai dengan URL API Laravel Anda
-  static const String baseUrl = 'http://127.0.0.1:8000/api';
-  
-  // Atau jika menggunakan emulator Android
-  // static const String baseUrl = 'http://10.0.2.2:8000/api';
-  
-  // Atau jika menggunakan device fisik, ganti dengan IP komputer Anda
-  // static const String baseUrl = 'http://192.168.1.100:8000/api';
+  // Gunakan baseUrl dinamis agar bekerja di Web, Android emulator, dan iOS/desktop
+  static String get baseUrl {
+    if (kIsWeb) {
+      return 'http://127.0.0.1:8000/api';
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      // Android emulator mengakses host via 10.0.2.2
+      return 'http://10.0.2.2:8000/api';
+    }
+    // iOS simulator/desktop biasanya bisa akses 127.0.0.1 langsung
+    return 'http://127.0.0.1:8000/api';
+  }
 }

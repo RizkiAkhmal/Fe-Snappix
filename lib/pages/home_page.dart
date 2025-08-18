@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fe_snappix/services/post_service.dart';
 import 'package:fe_snappix/config/api_config.dart';
 import 'package:fe_snappix/models/post_model.dart';
+import './post_detail_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -105,10 +106,21 @@ class _HomePageState extends State<HomePage> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final post = _posts[index];
-                    return _PostCard(post: post);
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => PostDetailPage(post: post),
+                          ),
+                        );
+                      },
+                      child: _PostCard(post: post),
+                    );
                   },
                   childCount: _posts.length,
                 ),
+
               ),
             ),
         ],
@@ -182,6 +194,7 @@ class _PostCard extends StatelessWidget {
                                 fontSize: 12, color: Colors.black54),
                           ),
                         ),
+                        
                       ],
                     ),
                   ),

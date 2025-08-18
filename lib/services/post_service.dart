@@ -174,5 +174,124 @@ class PostService {
     }
   }
 
+  // Like post
+  Future<Map<String, dynamic>> likePost(String token, int postId) async {
+    final uri = Uri.parse('$baseUrl/social/posts/$postId/like');
+    final response = await http.post(uri, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal like post: ${response.body}');
+    }
+  }
+
+  // Unlike post
+  Future<Map<String, dynamic>> unlikePost(String token, int postId) async {
+    final uri = Uri.parse('$baseUrl/social/posts/$postId/unlike');
+    final response = await http.delete(uri, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal unlike post: ${response.body}');
+    }
+  }
+
+  // Cek status like
+  Future<Map<String, dynamic>> checkLikeStatus(String token, int postId) async {
+    final uri = Uri.parse('$baseUrl/social/posts/$postId/like-status');
+    final response = await http.get(uri, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal cek status like: ${response.body}');
+    }
+  }
+
+    // Ambil komentar di sebuah post
+  Future<Map<String, dynamic>> getComments(String token, int postId,
+      {int page = 1}) async {
+    final uri = Uri.parse('$baseUrl/social/posts/$postId/comments?page=$page');
+    final response = await http.get(uri, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal mengambil komentar: ${response.body}');
+    }
+  }
+
+  // Tambah komentar
+  Future<Map<String, dynamic>> addComment(
+      String token, int postId, String isiKomentar) async {
+    final uri = Uri.parse('$baseUrl/social/posts/$postId/comments');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'isi_komentar': isiKomentar}),
+    );
+
+    if (response.statusCode == 201) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal menambahkan komentar: ${response.body}');
+    }
+  }
+
+    // Update komentar
+  Future<Map<String, dynamic>> updateComment(
+      String token, int commentId, String isiKomentar) async {
+    final uri = Uri.parse('$baseUrl/social/comments/$commentId');
+    final response = await http.put(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'isi_komentar': isiKomentar}),
+    );
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal mengupdate komentar: ${response.body}');
+    }
+  }
+
+  // Hapus komentar
+  Future<void> deleteComment(String token, int commentId) async {
+    final uri = Uri.parse('$baseUrl/social/comments/$commentId');
+    final response = await http.delete(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal menghapus komentar: ${response.body}');
+    }
+  }
+
 
 }

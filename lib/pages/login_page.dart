@@ -33,10 +33,12 @@ class _LoginPageState extends State<LoginPage> {
       if (result["success"] == true) {
         final token = result["token"];
         final name = result["user"]["name"];
+          final user = result["user"];
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString("token", token);
         await prefs.setString("name", name);
+        await prefs.setString("user_id", user["id"].toString());
 
         Navigator.pushReplacement(
   context,
