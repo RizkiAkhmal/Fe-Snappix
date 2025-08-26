@@ -23,7 +23,7 @@ class _MainPageState extends State<MainPage> {
   final List<Widget> _pages = [
     const HomePage(),
     const SearchPage(),
-    const SizedBox(), // Halaman kosong untuk tombol tambah
+    const SizedBox(), 
     const ProfilePage(),
   ];
 

@@ -5,6 +5,7 @@ class Post {
   final int? albumId;
   final String? albumName; // nama album opsional
   final String? userName; // nama user opsional
+  final int? userId; // ID user yang membuat post
   final String createdAt;
 
   Post({
@@ -14,6 +15,7 @@ class Post {
     this.albumId,
     this.albumName,
     this.userName,
+    this.userId,
     required this.createdAt,
   });
 
@@ -64,10 +66,17 @@ class Post {
 
     // Ambil nama user dari relasi
     String? userName;
+    int? userId;
     final dynamic userObj = json['user'];
     if (userObj is Map<String, dynamic>) {
       final s = _asString(userObj['name']);
       userName = s.isEmpty ? null : s;
+      userId = _asInt(userObj['id']);
+    }
+
+    // Jika tidak ada user object, coba ambil langsung dari json
+    if (userId == null) {
+      userId = _asInt(json['user_id'] ?? json['userId'] ?? json['id_user']);
     }
 
     final String createdAt =
@@ -80,6 +89,7 @@ class Post {
       albumId: albumId,
       albumName: albumName,
       userName: userName,
+      userId: userId,
       createdAt: createdAt,
     );
   }
@@ -89,6 +99,7 @@ class Post {
       'caption': caption,
       'image_url': imageUrl,
       'album_id': albumId,
+      'user_id': userId,
     };
   }
 
@@ -99,6 +110,7 @@ class Post {
     int? albumId,
     String? albumName,
     String? userName,
+    int? userId,
     String? createdAt,
   }) {
     return Post(
@@ -108,7 +120,9 @@ class Post {
       albumId: albumId ?? this.albumId,
       albumName: albumName ?? this.albumName,
       userName: userName ?? this.userName,
+      userId: userId ?? this.userId,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 }
+

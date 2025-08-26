@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fe_snappix/models/post_model.dart';
 import 'package:fe_snappix/services/post_service.dart';
@@ -17,7 +20,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
   late final PostService _postService = PostService(baseUrl: ApiConfig.baseUrl);
 
   String? _token;
-  String? _userId; // simpan userId login
+  String? _userId;
   bool _isLiked = false;
   int _likesCount = 0;
   bool _loading = false;
@@ -25,6 +28,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
   List<dynamic> _comments = [];
   bool _loadingComments = false;
   final TextEditingController _commentController = TextEditingController();
+
+  // tambahan untuk post lain
+  List<Post> _otherPosts = [];
+  bool _loadingPosts = false;
 
   @override
   void initState() {
@@ -50,9 +57,25 @@ class _PostDetailPageState extends State<PostDetailPage> {
           _likesCount = result['likes_count'] ?? 0;
         });
         await _fetchComments();
+        await _fetchOtherPosts(); // ambil postingan lain
       } catch (e) {
         print("Error init: $e");
       }
+    }
+  }
+
+  Future<void> _fetchOtherPosts() async {
+    if (_token == null) return;
+    setState(() => _loadingPosts = true);
+    try {
+      final posts = await _postService.getPosts(_token!);
+      // filter supaya tidak menampilkan postingan yang sedang dilihat
+      final filtered = posts.where((p) => p.id != widget.post.id).toList();
+      setState(() => _otherPosts = filtered);
+    } catch (e) {
+      print("Error fetch other posts: $e");
+    } finally {
+      setState(() => _loadingPosts = false);
     }
   }
 
@@ -191,6 +214,35 @@ class _PostDetailPageState extends State<PostDetailPage> {
     }
   }
 
+  /// Helper untuk menentukan action apa saja yang bisa dipakai user
+  List<Widget> _buildCommentActions(Map<String, dynamic> comment, int index) {
+    final user = comment['user'];
+    final isOwnComment = user != null && user['id'].toString() == _userId;
+    final isPostOwner = widget.post.userId != null && widget.post.userId.toString() == _userId;
+
+    List<Widget> actions = [];
+
+    if (isOwnComment) {
+      actions.add(
+        IconButton(
+          icon: const Icon(Icons.edit, color: Colors.blue),
+          onPressed: () => _updateComment(index, comment),
+        ),
+      );
+    }
+
+    if (isOwnComment || isPostOwner) {
+      actions.add(
+        IconButton(
+          icon: const Icon(Icons.delete, color: Colors.red),
+          onPressed: () => _deleteComment(index, comment),
+        ),
+      );
+    }
+
+    return actions;
+  }
+
   @override
   Widget build(BuildContext context) {
     final post = widget.post;
@@ -207,6 +259,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ===== detail postingan utama =====
                   if (post.imageUrl.isNotEmpty)
                     Image.network(post.imageUrl, fit: BoxFit.cover)
                   else
@@ -270,8 +323,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               final index = entry.key;
                               final c = entry.value;
                               final user = c['user'];
-                              final isOwnComment = user != null &&
-                                  user['id'].toString() == _userId;
 
                               return ListTile(
                                 leading: const Icon(Icons.comment,
@@ -280,25 +331,53 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                 subtitle: Text(user != null
                                     ? user['name'] ?? 'Unknown'
                                     : 'Anonim'),
-                                trailing: isOwnComment
+                                trailing: (user != null &&
+                                        (user['id'].toString() == _userId ||
+                                            (widget.post.userId != null && widget.post.userId.toString() ==
+                                                _userId)))
                                     ? Row(
                                         mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                              icon: const Icon(Icons.edit,
-                                                  color: Colors.blue),
-                                              onPressed: () =>
-                                                  _updateComment(index, c)),
-                                          IconButton(
-                                              icon: const Icon(Icons.delete,
-                                                  color: Colors.red),
-                                              onPressed: () =>
-                                                  _deleteComment(index, c)),
-                                        ],
+                                        children:
+                                            _buildCommentActions(c, index),
                                       )
                                     : null,
                               );
                             }).toList(),
+                          ),
+                        const Divider(),
+                        const SizedBox(height: 8),
+
+                        // ====== bagian post lain ======
+                        const Text("Postingan Lain",
+                            style: TextStyle(
+                                fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        if (_loadingPosts)
+                          const Center(child: CircularProgressIndicator())
+                        else if (_otherPosts.isEmpty)
+                          const Text("Belum ada postingan lain")
+                        else
+                          MasonryGridView.count(
+                            crossAxisCount: 2,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            itemCount: _otherPosts.length,
+                            itemBuilder: (context, index) {
+                              final p = _otherPosts[index];
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PostDetailPage(post: p),
+                                    ),
+                                  );
+                                },
+                                child: _PostCard(post: p),
+                              );
+                            },
                           ),
                       ],
                     ),
@@ -307,6 +386,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
               ),
             ),
           ),
+          // ===== input komentar =====
           SafeArea(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -335,6 +415,41 @@ class _PostDetailPageState extends State<PostDetailPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+// Reuse card dari home
+class _PostCard extends StatelessWidget {
+  final Post post;
+  const _PostCard({required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: post.imageUrl.isNotEmpty
+              ? Image.network(post.imageUrl, fit: BoxFit.cover)
+              : Container(
+                  height: 150,
+                  color: Colors.grey.shade200,
+                  child: const Icon(Icons.image_not_supported),
+                ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          post.caption.isNotEmpty ? post.caption : "(Tanpa judul)",
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.bold,
+            fontSize: 13.5,
+          ),
+        ),
+      ],
     );
   }
 }
