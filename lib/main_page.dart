@@ -1,11 +1,12 @@
 import 'package:fe_snappix/pages/add_album_page.dart';
-import 'package:fe_snappix/pages/add_post_page.dart'; // Import halaman tambah postingan
+import 'package:fe_snappix/pages/add_post_page.dart'; 
 import 'package:fe_snappix/pages/home_page.dart';
 import 'package:fe_snappix/pages/profile_page.dart';
 import 'package:fe_snappix/pages/search_page.dart';
 import 'package:fe_snappix/services/post_service.dart';
 import 'package:fe_snappix/config/api_config.dart';
 import 'package:flutter/material.dart';
+import 'package:iconsax/iconsax.dart';
 
 class MainPage extends StatefulWidget {
   final String token; // Token auth Sanctum
@@ -24,13 +25,6 @@ class _MainPageState extends State<MainPage> {
     const SearchPage(),
     const SizedBox(), // Halaman kosong untuk tombol tambah
     const ProfilePage(),
-  ];
-
-  final List<String> _titles = [
-    "Home",
-    "Search",
-    "",
-    "Profile",
   ];
 
   // Inisialisasi PostService dengan baseUrl API
@@ -66,7 +60,7 @@ class _MainPageState extends State<MainPage> {
                         MaterialPageRoute(
                           builder: (context) => AddPostPage(
                             token: widget.token,
-                            postService: _postService, // Kirim service yang sudah diinisialisasi
+                            postService: _postService,
                           ),
                         ),
                       );
@@ -120,41 +114,67 @@ class _MainPageState extends State<MainPage> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-        centerTitle: true,
-        backgroundColor: Colors.orange,
-        actions: [
-          if (_currentIndex == 2)
-            IconButton(
-              icon: const Icon(Icons.add_box),
-              onPressed: _showCreateModal,
+  /// Fungsi custom nav item dengan garis bawah
+  BottomNavigationBarItem _buildNavItem(IconData icon, int index) {
+    return BottomNavigationBarItem(
+      label: '',
+      icon: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon,
+              color: _currentIndex == index ? Colors.black : Colors.black54),
+          if (_currentIndex == index)
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              height: 3,
+              width: 20,
+              color: Colors.black, // garis bawah aktif
             ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
       body: _currentIndex == 2 ? const SizedBox() : _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          setState(() {
-            if (index == 2) {
-              _showCreateModal();
-            } else {
-              _currentIndex = index;
-            }
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_box), label: 'Tambah'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          currentIndex: _currentIndex,
+          selectedItemColor: Colors.black,
+          unselectedItemColor: Colors.black54,
+          showSelectedLabels: false,
+          showUnselectedLabels: false,
+          onTap: (index) {
+            setState(() {
+              if (index == 2) {
+                _showCreateModal();
+              } else {
+                _currentIndex = index;
+              }
+            });
+          },
+          items: [
+            _buildNavItem(Iconsax.home_2, 0),
+            _buildNavItem(Iconsax.search_normal, 1),
+            _buildNavItem(Iconsax.add_square, 2),
+            _buildNavItem(Iconsax.user, 3),
+          ],
+        ),
       ),
     );
   }

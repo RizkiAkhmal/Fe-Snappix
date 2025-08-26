@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fe_snappix/services/post_service.dart';
 import 'package:fe_snappix/config/api_config.dart';
@@ -51,14 +54,6 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.remove("token");
-
-    if (!mounted) return;
-    Navigator.pushReplacementNamed(context, "/login");
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_token == null) {
@@ -71,18 +66,6 @@ class _HomePageState extends State<HomePage> {
       },
       child: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            pinned: true,
-            backgroundColor: Colors.orange,
-            title: const Text('Home'),
-            actions: [
-              IconButton(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout),
-                tooltip: 'Logout',
-              ),
-            ],
-          ),
           if (_isLoadingPosts)
             const SliverFillRemaining(
               hasScrollBody: false,
@@ -91,36 +74,41 @@ class _HomePageState extends State<HomePage> {
           else if (_posts.isEmpty)
             const SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(child: Text('Belum ada postingan')), 
+              child: Center(child: Text('Belum ada postingan')),
             )
           else
             SliverPadding(
               padding: const EdgeInsets.all(12),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                  childAspectRatio: 0.8,
-                ),
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final post = _posts[index];
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => PostDetailPage(post: post),
-                          ),
-                        );
-                      },
-                      child: _PostCard(post: post),
-                    );
-                  },
-                  childCount: _posts.length,
-                ),
+              sliver: SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final screenWidth = constraints.crossAxisExtent;
+                  int crossAxisCount = 2;
 
+                  if (screenWidth > 600) crossAxisCount = 3;
+                  if (screenWidth > 900) crossAxisCount = 4;
+                  if (screenWidth > 1200) crossAxisCount = 5;
+
+                  return SliverMasonryGrid.count(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childCount: _posts.length,
+                    itemBuilder: (context, index) {
+                      final post = _posts[index];
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PostDetailPage(post: post),
+                            ),
+                          );
+                        },
+                        child: _PostCard(post: post),
+                      );
+                    },
+                  );
+                },
               ),
             ),
         ],
@@ -135,72 +123,75 @@ class _PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          )
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    // tinggi minimal gambar juga responsive
+    double minHeight = 150;
+    if (screenWidth > 600) minHeight = 200;
+    if (screenWidth > 900) minHeight = 250;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
             child: post.imageUrl.isNotEmpty
                 ? Image.network(
                     post.imageUrl,
                     fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        height: minHeight,
+                        color: Colors.grey.shade200,
+                        child: const Center(
+                          child: CupertinoActivityIndicator(),
+                        ),
+                      );
+                    },
                     errorBuilder: (context, _, __) => Container(
+                      height: minHeight,
                       color: Colors.grey.shade200,
                       child: const Icon(Icons.broken_image, color: Colors.grey),
                     ),
                   )
                 : Container(
+                    height: minHeight,
                     color: Colors.grey.shade200,
-                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    child: const Icon(Icons.image_not_supported,
+                        color: Colors.grey),
                   ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  post.caption.isNotEmpty ? post.caption : '(Tanpa caption)',
+          const SizedBox(height: 6),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  post.caption.isNotEmpty ? post.caption : '(Tanpa judul)',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                if (post.userName != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4.0),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.person,
-                            size: 14, color: Colors.orange),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            post.userName!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                fontSize: 12, color: Colors.black54),
-                          ),
-                        ),
-                        
-                      ],
-                    ),
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
                   ),
-
-              ],
-            ),
+                ),
+              ),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(
+                  CupertinoIcons.ellipsis,
+                  size: 20,
+                  color: Colors.black,
+                ),
+                onPressed: () {
+                  // TODO: menu aksi (edit, hapus, dsb)
+                },
+              ),
+            ],
           ),
         ],
       ),
