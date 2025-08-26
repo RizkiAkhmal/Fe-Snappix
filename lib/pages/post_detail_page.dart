@@ -225,8 +225,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     return ListTile(
                       leading: const Icon(Icons.comment, color: Colors.orange),
                       title: Text(c['isi_komentar'] ?? ''),
-                      subtitle:
-                          Text(user != null ? user['name'] ?? "User" : "Anonim"),
+                      subtitle: Text(
+                          user != null ? user['name'] ?? "User" : "Anonim"),
                       trailing: PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'edit') {
@@ -307,18 +307,36 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final post = widget.post;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Detail Postingan"),
-        backgroundColor: Colors.orange,
-      ),
       body: ListView(
         children: [
           if (post.imageUrl.isNotEmpty)
-            Image.network(post.imageUrl, fit: BoxFit.cover)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              clipBehavior: Clip.hardEdge,
+              child: Image.network(
+                post.imageUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return SizedBox(
+                    height: 200, // tinggi default sementara loading
+                    child: const Center(child: CircularProgressIndicator()),
+                  );
+                },
+              ),
+            )
           else
             Container(
-              height: 200,
-              color: Colors.grey.shade200,
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                border: Border.all(color: Colors.orange, width: 2),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: const Icon(Icons.image_not_supported, size: 80),
             ),
           Padding(
@@ -356,8 +374,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                  content:
-                                      Text("Gagal hapus postingan: $e")),
+                                  content: Text("Gagal hapus postingan: $e")),
                             );
                           }
                         }
@@ -381,8 +398,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                  content: Text(
-                                      "Gagal melaporkan postingan: $e")),
+                                  content:
+                                      Text("Gagal melaporkan postingan: $e")),
                             );
                           }
                         }
