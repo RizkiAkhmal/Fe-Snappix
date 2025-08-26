@@ -12,10 +12,10 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  HomePageState createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   String? _token;
   String? _currentUserId;
   late final PostService _postService = PostService(baseUrl: ApiConfig.baseUrl);
@@ -55,64 +55,76 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> reloadPosts() async {
+    if (_token != null) {
+      await _fetchPosts(_token!);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_token == null || _currentUserId == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        if (_token != null) await _fetchPosts(_token!);
-      },
-      child: CustomScrollView(
-        slivers: [
-          if (_isLoadingPosts)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (_posts.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('Belum ada postingan')),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.all(12),
-              sliver: SliverLayoutBuilder(
-                builder: (context, constraints) {
-                  final screenWidth = constraints.crossAxisExtent;
-                  int crossAxisCount = 2;
-                  if (screenWidth > 600) crossAxisCount = 3;
-                  if (screenWidth > 900) crossAxisCount = 4;
-                  if (screenWidth > 1200) crossAxisCount = 5;
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          if (_token != null) await _fetchPosts(_token!);
+        },
+        child: CustomScrollView(
+          slivers: [
+            if (_isLoadingPosts)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_posts.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(child: Text('Belum ada postingan')),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.all(12),
+                sliver: SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final screenWidth = constraints.crossAxisExtent;
+                    int crossAxisCount = 2;
+                    if (screenWidth > 600) crossAxisCount = 3;
+                    if (screenWidth > 900) crossAxisCount = 4;
+                    if (screenWidth > 1200) crossAxisCount = 5;
 
-                  return SliverMasonryGrid.count(
-                    crossAxisCount: crossAxisCount,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childCount: _posts.length,
-                    itemBuilder: (context, index) {
-                      final post = _posts[index];
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PostDetailPage(post: post),
-                            ),
-                          );
-                        },
-                        child: _PostCard(post: post, currentUserId: _currentUserId!),
-                      );
-                    },
-                  );
-                },
+                    return SliverMasonryGrid.count(
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: 12,
+                      crossAxisSpacing: 12,
+                      childCount: _posts.length,
+                      itemBuilder: (context, index) {
+                        final post = _posts[index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PostDetailPage(post: post),
+                              ),
+                            );
+                          },
+                          child: _PostCard(
+                            post: post,
+                            currentUserId: _currentUserId!,
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
+      // ❌ FloatingActionButton dihapus
     );
   }
 }
@@ -155,14 +167,14 @@ class _PostCard extends StatelessWidget {
                     color: Colors.grey.shade200,
                     width: double.infinity,
                     height: 150,
-                    child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    child: const Icon(Icons.image_not_supported,
+                        color: Colors.grey),
                   ),
           ),
           const SizedBox(height: 6),
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Caption di kiri
               Expanded(
                 child: Text(
                   post.caption.isNotEmpty ? post.caption : '(Tanpa judul)',
@@ -174,12 +186,11 @@ class _PostCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Jarak antara caption dan tombol
               const SizedBox(width: 8),
-              // Titik 3 di kanan
               PopupMenuButton<String>(
                 padding: EdgeInsets.zero,
-                icon: const Icon(CupertinoIcons.ellipsis, size: 20, color: Colors.black),
+                icon: const Icon(CupertinoIcons.ellipsis,
+                    size: 20, color: Colors.black),
                 onSelected: (value) async {
                   final token = await SharedPreferences.getInstance()
                       .then((prefs) => prefs.getString("token"));
@@ -187,13 +198,15 @@ class _PostCard extends StatelessWidget {
 
                   if (value == 'hapus') {
                     try {
-                      await PostService(baseUrl: ApiConfig.baseUrl).deletePost(token, post.id);
+                      await PostService(baseUrl: ApiConfig.baseUrl)
+                          .deletePost(token, post.id);
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Postingan berhasil dihapus")),
+                          const SnackBar(
+                              content: Text("Postingan berhasil dihapus")),
                         );
                         final homeState =
-                            context.findAncestorStateOfType<_HomePageState>();
+                            context.findAncestorStateOfType<HomePageState>();
                         homeState?.setState(() {
                           homeState._posts.removeWhere((p) => p.id == post.id);
                         });
@@ -201,23 +214,27 @@ class _PostCard extends StatelessWidget {
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Gagal menghapus postingan: $e")),
+                          SnackBar(
+                              content: Text("Gagal menghapus postingan: $e")),
                         );
                       }
                     }
                   } else if (value == 'laporkan') {
                     try {
                       await PostService(baseUrl: ApiConfig.baseUrl)
-                          .reportPost(token, post.id, alasan: "Konten tidak pantas");
+                          .reportPost(token, post.id,
+                              alasan: "Konten tidak pantas");
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Postingan berhasil dilaporkan")),
+                          const SnackBar(
+                              content: Text("Postingan berhasil dilaporkan")),
                         );
                       }
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Gagal melaporkan postingan: $e")),
+                          SnackBar(
+                              content: Text("Gagal melaporkan postingan: $e")),
                         );
                       }
                     }
@@ -227,12 +244,14 @@ class _PostCard extends StatelessWidget {
                   if (currentUserId == post.userId.toString())
                     const PopupMenuItem(
                       value: 'hapus',
-                      child: Text('Hapus', style: TextStyle(color: Colors.red)),
+                      child: Text('Hapus',
+                          style: TextStyle(color: Colors.red)),
                     )
                   else
                     const PopupMenuItem(
                       value: 'laporkan',
-                      child: Text('Laporkan', style: TextStyle(color: Colors.red)),
+                      child: Text('Laporkan',
+                          style: TextStyle(color: Colors.red)),
                     ),
                 ],
               ),

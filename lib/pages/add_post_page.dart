@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/post_service.dart';
+import 'home_page.dart'; // pastikan file ini sesuai lokasi HomePage kamu
 
 class AddPostPage extends StatefulWidget {
   final String token;
@@ -63,36 +64,42 @@ class _AddPostPageState extends State<AddPostPage> {
   }
 
   Future<void> _submitPost() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isSubmitting = true);
-      try {
-        final imageFile = kIsWeb ? null : _selectedImage;
+  if (_formKey.currentState!.validate()) {
+    setState(() => _isSubmitting = true);
+    try {
+      final imageFile = kIsWeb ? null : _selectedImage;
 
-        await widget.postService.createPost(
-          token: widget.token,
-          judul: _captionController.text,
-          imageFile: imageFile,
-          webImage: _webImage,
-          albumId: _selectedAlbumId,
-        );
+      await widget.postService.createPost(
+        token: widget.token,
+        judul: _captionController.text,
+        imageFile: imageFile,
+        webImage: _webImage,
+        albumId: _selectedAlbumId,
+      );
 
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Post berhasil disimpan!')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post berhasil disimpan!')),
+      );
 
-        _captionController.clear();
-        setState(() {
-          _selectedImage = null;
-          _webImage = null;
-          _selectedAlbumId = null;
-        });
-      } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Gagal membuat post: $e')));
-      } finally {
-        setState(() => _isSubmitting = false);
+      _captionController.clear();
+      setState(() {
+        _selectedImage = null;
+        _webImage = null;
+        _selectedAlbumId = null;
+      });
+
+      // ✅ Tutup AddPostPage, balik ke halaman sebelumnya (HomePage)
+      if (mounted) {
+        Navigator.pop(context, true); // true = opsional untuk trigger refresh di home
       }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal membuat post: $e')));
+    } finally {
+      setState(() => _isSubmitting = false);
     }
   }
+}
 
   Widget _imagePreview() {
     if (kIsWeb && _webImage != null) {
@@ -157,26 +164,25 @@ class _AddPostPageState extends State<AddPostPage> {
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<int>(
-  value: _selectedAlbumId,
-  decoration: const InputDecoration(
-    labelText: "Pilih Album (opsional)",
-    border: OutlineInputBorder(),
-  ),
-  items: _albums
-      .map((album) {
-        final dynamic rawId = album['id'];
-        final int id = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '') ?? 0;
-        final String name = (album['name'] ?? '').toString();
-        return DropdownMenuItem<int>(
-          value: id,
-          child: Text(name),
-        );
-      })
-      .toList(),
-  onChanged: (value) => setState(() => _selectedAlbumId = value),
-  isExpanded: true,
-),
-
+                        value: _selectedAlbumId,
+                        decoration: const InputDecoration(
+                          labelText: "Pilih Album (opsional)",
+                          border: OutlineInputBorder(),
+                        ),
+                        items: _albums
+                            .map((album) {
+                              final dynamic rawId = album['id'];
+                              final int id = rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '') ?? 0;
+                              final String name = (album['name'] ?? '').toString();
+                              return DropdownMenuItem<int>(
+                                value: id,
+                                child: Text(name),
+                              );
+                            })
+                            .toList(),
+                        onChanged: (value) => setState(() => _selectedAlbumId = value),
+                        isExpanded: true,
+                      ),
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: _isSubmitting ? null : _submitPost,

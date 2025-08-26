@@ -20,15 +20,24 @@ class MainPage extends StatefulWidget {
 class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const SearchPage(),
-    const SizedBox(), 
-    const ProfilePage(),
-  ];
+  // Tambah GlobalKey supaya bisa akses state HomePage
+  final GlobalKey<HomePageState> _homeKey = GlobalKey<HomePageState>();
+
+  late final List<Widget> _pages;
 
   // Inisialisasi PostService dengan baseUrl API
   final PostService _postService = PostService(baseUrl: ApiConfig.baseUrl);
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomePage(key: _homeKey),
+      const SearchPage(),
+      const SizedBox(), 
+      const ProfilePage(),
+    ];
+  }
 
   void _showCreateModal() {
     showModalBottomSheet(
@@ -53,9 +62,9 @@ class _MainPageState extends State<MainPage> {
                   _buildOption(
                     icon: Icons.camera_alt,
                     label: "Postingan",
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => AddPostPage(
@@ -64,14 +73,20 @@ class _MainPageState extends State<MainPage> {
                           ),
                         ),
                       );
+                      if (result == true) {
+                        setState(() {
+                          _currentIndex = 0; // balik ke Home
+                        });
+                        _homeKey.currentState?.reloadPosts();
+                      }
                     },
                   ),
                   _buildOption(
                     icon: Icons.photo_album,
                     label: "Album",
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      Navigator.push(
+                      final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => AddAlbumPage(
@@ -79,6 +94,12 @@ class _MainPageState extends State<MainPage> {
                           ),
                         ),
                       );
+                      if (result == true) {
+                        setState(() {
+                          _currentIndex = 0; // balik ke Home
+                        });
+                        _homeKey.currentState?.reloadPosts();
+                      }
                     },
                   ),
                 ],
