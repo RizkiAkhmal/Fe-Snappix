@@ -1,3 +1,4 @@
+import 'package:fe_snappix/pages/register_page.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'pages/login_page.dart';
@@ -18,6 +19,7 @@ class MainApp extends StatelessWidget {
       home: const SplashScreen(), // mulai dari SplashScreen
       routes: {
         '/login': (context) => const LoginPage(),
+        '/register': (context) => const RegisterPage(),
         '/main': (context) => const MainPage(token: ''),
       },
     );

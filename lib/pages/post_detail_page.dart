@@ -1,3 +1,4 @@
+// PostDetailPage.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -26,10 +27,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
   bool _loading = false;
 
   List<dynamic> _comments = [];
-  bool _loadingComments = false;
   final TextEditingController _commentController = TextEditingController();
+  String? _editingCommentId;
 
-  // tambahan untuk post lain
   List<Post> _otherPosts = [];
   bool _loadingPosts = false;
 
@@ -57,7 +57,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
           _likesCount = result['likes_count'] ?? 0;
         });
         await _fetchComments();
-        await _fetchOtherPosts(); // ambil postingan lain
+        await _fetchOtherPosts();
       } catch (e) {
         print("Error init: $e");
       }
@@ -69,11 +69,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
     setState(() => _loadingPosts = true);
     try {
       final posts = await _postService.getPosts(_token!);
-      // filter supaya tidak menampilkan postingan yang sedang dilihat
-      final filtered = posts.where((p) => p.id != widget.post.id).toList();
-      setState(() => _otherPosts = filtered);
-    } catch (e) {
-      print("Error fetch other posts: $e");
+      setState(() {
+        _otherPosts = posts.where((p) => p.id != widget.post.id).toList();
+      });
     } finally {
       setState(() => _loadingPosts = false);
     }
@@ -97,10 +95,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
           _likesCount = result['likes_count'] ?? _likesCount;
         });
       }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal update like: $e")),
-      );
     } finally {
       setState(() => _loading = false);
     }
@@ -108,8 +102,6 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   Future<void> _fetchComments() async {
     if (_token == null) return;
-    setState(() => _loadingComments = true);
-
     try {
       final data = await _postService.getComments(_token!, widget.post.id);
       setState(() {
@@ -117,130 +109,197 @@ class _PostDetailPageState extends State<PostDetailPage> {
       });
     } catch (e) {
       print("Error fetch comments: $e");
-    } finally {
-      setState(() => _loadingComments = false);
     }
   }
 
-  Future<void> _addComment() async {
+  Future<void> _submitComment() async {
     if (_token == null || _commentController.text.trim().isEmpty) return;
 
     try {
-      final result = await _postService.addComment(
-        _token!,
-        widget.post.id,
-        _commentController.text.trim(),
-      );
-      setState(() {
-        _comments = [result['comment'], ..._comments];
-        _commentController.clear();
-      });
+      if (_editingCommentId != null) {
+        await _postService.updateComment(
+          _token!,
+          int.parse(_editingCommentId!),
+          _commentController.text.trim(),
+        );
+        await _fetchComments();
+      } else {
+        final result = await _postService.addComment(
+          _token!,
+          widget.post.id,
+          _commentController.text.trim(),
+        );
+        setState(() {
+          _comments.insert(0, result['comment']);
+        });
+      }
+      _commentController.clear();
+      setState(() => _editingCommentId = null);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Gagal menambah komentar: $e")),
+        SnackBar(content: Text("Gagal menyimpan komentar: $e")),
       );
     }
   }
 
-  Future<void> _updateComment(int index, dynamic comment) async {
-    final editController = TextEditingController(text: comment['isi_komentar']);
-
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Edit Komentar"),
-        content: TextField(
-          controller: editController,
-          maxLength: 1000,
-          decoration: const InputDecoration(hintText: "Tulis komentar..."),
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal")),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                final updated = await _postService.updateComment(
-                  _token!,
-                  comment['id'],
-                  editController.text.trim(),
-                );
-                setState(() {
-                  _comments[index] = updated['comment'];
-                });
-                Navigator.pop(context);
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Gagal update komentar: $e")),
-                );
-              }
-            },
-            child: const Text("Simpan"),
-          ),
-        ],
-      ),
-    );
+  Future<void> _deleteComment(String commentId) async {
+    if (_token == null) return;
+    try {
+      await _postService.deleteComment(
+        _token!,
+        int.parse(commentId),
+      );
+      setState(() {
+        _comments.removeWhere((c) => c['id'].toString() == commentId);
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal hapus komentar: $e")),
+      );
+    }
   }
 
-  Future<void> _deleteComment(int index, dynamic comment) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Hapus Komentar"),
-        content: const Text("Apakah kamu yakin ingin menghapus komentar ini?"),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Batal")),
-          ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Hapus")),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      try {
-        await _postService.deleteComment(_token!, comment['id']);
-        setState(() {
-          _comments.removeAt(index);
-        });
-      } catch (e) {
+  Future<void> _reportComment(String commentId) async {
+    if (_token == null) return;
+    try {
+      await _postService.reportComment(
+        _token!,
+        int.parse(commentId),
+        alasan: "Komentar tidak pantas",
+      );
+      if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Gagal hapus komentar: $e")),
+          const SnackBar(content: Text("Komentar berhasil dilaporkan")),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal melaporkan komentar: $e")),
         );
       }
     }
   }
 
-  /// Helper untuk menentukan action apa saja yang bisa dipakai user
-  List<Widget> _buildCommentActions(Map<String, dynamic> comment, int index) {
-    final user = comment['user'];
-    final isOwnComment = user != null && user['id'].toString() == _userId;
-    final isPostOwner = widget.post.userId != null && widget.post.userId.toString() == _userId;
+  void _startEditComment(String commentId, String oldText) {
+    setState(() {
+      _editingCommentId = commentId;
+      _commentController.text = oldText;
+    });
+  }
 
-    List<Widget> actions = [];
-
-    if (isOwnComment) {
-      actions.add(
-        IconButton(
-          icon: const Icon(Icons.edit, color: Colors.blue),
-          onPressed: () => _updateComment(index, comment),
-        ),
-      );
-    }
-
-    if (isOwnComment || isPostOwner) {
-      actions.add(
-        IconButton(
-          icon: const Icon(Icons.delete, color: Colors.red),
-          onPressed: () => _deleteComment(index, comment),
-        ),
-      );
-    }
-
-    return actions;
+  void _showCommentsSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.7,
+          maxChildSize: 0.95,
+          minChildSize: 0.5,
+          builder: (_, controller) => Column(
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.builder(
+                  controller: controller,
+                  itemCount: _comments.length,
+                  itemBuilder: (context, index) {
+                    final c = _comments[index];
+                    final user = c['user'];
+                    final commentId = c['id'].toString();
+                    return ListTile(
+                      leading: const Icon(Icons.comment, color: Colors.orange),
+                      title: Text(c['isi_komentar'] ?? ''),
+                      subtitle:
+                          Text(user != null ? user['name'] ?? "User" : "Anonim"),
+                      trailing: PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'edit') {
+                            _startEditComment(
+                                commentId, c['isi_komentar'] ?? '');
+                          } else if (value == 'delete') {
+                            _deleteComment(commentId);
+                          } else if (value == 'report') {
+                            _reportComment(commentId);
+                          }
+                        },
+                        itemBuilder: (context) {
+                          if (_userId == c['user_id'].toString()) {
+                            return [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Text("Edit"),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Text("Hapus"),
+                              ),
+                            ];
+                          } else {
+                            return [
+                              const PopupMenuItem(
+                                value: 'report',
+                                child: Text("Laporkan"),
+                              ),
+                            ];
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: MediaQuery.of(context).viewInsets.add(
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                child: Row(
+                  children: [
+                    const CircleAvatar(radius: 18, child: Icon(Icons.person)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        decoration: InputDecoration(
+                          hintText: _editingCommentId != null
+                              ? "Edit komentar..."
+                              : "Tambahkan komentar...",
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        _editingCommentId != null ? Icons.check : Icons.send,
+                        color: Colors.blue,
+                      ),
+                      onPressed: _submitComment,
+                    )
+                  ],
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -252,174 +311,196 @@ class _PostDetailPageState extends State<PostDetailPage> {
         title: const Text("Detail Postingan"),
         backgroundColor: Colors.orange,
       ),
-      body: Column(
+      body: ListView(
         children: [
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // ===== detail postingan utama =====
-                  if (post.imageUrl.isNotEmpty)
-                    Image.network(post.imageUrl, fit: BoxFit.cover)
-                  else
-                    Container(
-                      height: 200,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.image_not_supported, size: 80),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          post.caption.isNotEmpty
-                              ? post.caption
-                              : "(Tanpa caption)",
-                          style: const TextStyle(
-                              fontSize: 18, fontWeight: FontWeight.w600),
-                        ),
-                        const SizedBox(height: 12),
-                        if (post.userName != null)
-                          Row(
-                            children: [
-                              const Icon(Icons.person,
-                                  size: 18, color: Colors.orange),
-                              const SizedBox(width: 6),
-                              Text(post.userName!),
-                            ],
-                          ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            IconButton(
-                              onPressed: _loading ? null : _toggleLike,
-                              icon: Icon(
-                                _isLiked
-                                    ? Icons.favorite
-                                    : Icons.favorite_border,
-                                color: _isLiked ? Colors.red : Colors.grey,
-                              ),
-                            ),
-                            Text("$_likesCount suka"),
-                          ],
-                        ),
-                        const Divider(),
-                        const Text("Komentar",
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        if (_loadingComments)
-                          const Center(
-                              child: Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: CircularProgressIndicator()))
-                        else if (_comments.isEmpty)
-                          const Text("Belum ada komentar")
-                        else
-                          Column(
-                            children: _comments.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final c = entry.value;
-                              final user = c['user'];
-
-                              return ListTile(
-                                leading: const Icon(Icons.comment,
-                                    color: Colors.orange),
-                                title: Text(c['isi_komentar'] ?? ''),
-                                subtitle: Text(user != null
-                                    ? user['name'] ?? 'Unknown'
-                                    : 'Anonim'),
-                                trailing: (user != null &&
-                                        (user['id'].toString() == _userId ||
-                                            (widget.post.userId != null && widget.post.userId.toString() ==
-                                                _userId)))
-                                    ? Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children:
-                                            _buildCommentActions(c, index),
-                                      )
-                                    : null,
-                              );
-                            }).toList(),
-                          ),
-                        const Divider(),
-                        const SizedBox(height: 8),
-
-                        // ====== bagian post lain ======
-                        const Text("Postingan Lain",
-                            style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        if (_loadingPosts)
-                          const Center(child: CircularProgressIndicator())
-                        else if (_otherPosts.isEmpty)
-                          const Text("Belum ada postingan lain")
-                        else
-                          MasonryGridView.count(
-                            crossAxisCount: 2,
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            itemCount: _otherPosts.length,
-                            itemBuilder: (context, index) {
-                              final p = _otherPosts[index];
-                              return GestureDetector(
-                                onTap: () {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => PostDetailPage(post: p),
-                                    ),
-                                  );
-                                },
-                                child: _PostCard(post: p),
-                              );
-                            },
-                          ),
-                      ],
-                    ),
+          if (post.imageUrl.isNotEmpty)
+            Image.network(post.imageUrl, fit: BoxFit.cover)
+          else
+            Container(
+              height: 200,
+              color: Colors.grey.shade200,
+              child: const Icon(Icons.image_not_supported, size: 80),
+            ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: _loading ? null : _toggleLike,
+                  icon: Icon(
+                    _isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: _isLiked ? Colors.red : Colors.black,
+                    size: 28,
                   ),
-                ],
-              ),
+                ),
+                IconButton(
+                  onPressed: _showCommentsSheet,
+                  icon: const Icon(Icons.mode_comment_outlined, size: 26),
+                ),
+                const Spacer(),
+                PopupMenuButton<String>(
+                  onSelected: (value) async {
+                    if (value == 'delete') {
+                      if (_token != null) {
+                        try {
+                          await _postService.deletePost(
+                              _token!, widget.post.id);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text("Postingan berhasil dihapus")),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content:
+                                      Text("Gagal hapus postingan: $e")),
+                            );
+                          }
+                        }
+                      }
+                    } else if (value == 'report') {
+                      if (_token != null) {
+                        try {
+                          await _postService.reportPost(
+                            _token!,
+                            widget.post.id,
+                            alasan: "Konten tidak pantas",
+                          );
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content:
+                                      Text("Postingan berhasil dilaporkan")),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text(
+                                      "Gagal melaporkan postingan: $e")),
+                            );
+                          }
+                        }
+                      }
+                    }
+                  },
+                  itemBuilder: (context) {
+                    if (_userId == widget.post.userId.toString()) {
+                      return [
+                        const PopupMenuItem(
+                          value: 'delete',
+                          child: Text("Hapus"),
+                        ),
+                      ];
+                    } else {
+                      return [
+                        const PopupMenuItem(
+                          value: 'report',
+                          child: Text("Laporkan"),
+                        ),
+                      ];
+                    }
+                  },
+                  icon: const Icon(Icons.more_vert, size: 26),
+                ),
+              ],
             ),
           ),
-          // ===== input komentar =====
-          SafeArea(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                border: const Border(top: BorderSide(color: Colors.grey)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text("$_likesCount suka",
+                style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          if (post.caption.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(color: Colors.black),
+                  children: [
+                    TextSpan(
+                      text: "${post.userName ?? "User"} ",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(text: post.caption),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentController,
-                      decoration: const InputDecoration(
-                        hintText: "Tulis komentar...",
-                        border: InputBorder.none,
+            ),
+          if (_comments.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              child: GestureDetector(
+                onTap: _showCommentsSheet,
+                child: Text(
+                  "Lihat semua ${_comments.length} komentar",
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ),
+            ),
+          if (_comments.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(color: Colors.black),
+                  children: [
+                    TextSpan(
+                      text: "${_comments.first['user']?['name'] ?? "User"} ",
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(text: _comments.first['isi_komentar'] ?? ''),
+                  ],
+                ),
+              ),
+            ),
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text("Postingan Lain",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ),
+          if (_loadingPosts)
+            const Center(child: CircularProgressIndicator())
+          else if (_otherPosts.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(8),
+              child: Text("Belum ada postingan lain"),
+            )
+          else
+            MasonryGridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              itemCount: _otherPosts.length,
+              itemBuilder: (context, index) {
+                final p = _otherPosts[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PostDetailPage(post: p),
                       ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: Colors.orange),
-                    onPressed: _addComment,
-                  )
-                ],
-              ),
+                    );
+                  },
+                  child: _PostCard(post: p),
+                );
+              },
             ),
-          ),
         ],
       ),
     );
   }
 }
 
-// Reuse card dari home
 class _PostCard extends StatelessWidget {
   final Post post;
   const _PostCard({required this.post});

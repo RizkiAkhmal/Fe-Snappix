@@ -11,6 +11,8 @@ class PostService {
 
   PostService({required this.baseUrl});
 
+  // ================== POST ==================
+
   // Ambil semua postingan
   Future<List<Post>> getPosts(String token) async {
     final uri = Uri.parse('$baseUrl/posts');
@@ -62,7 +64,8 @@ class PostService {
 
       // Upload image
       if (!kIsWeb && imageFile != null) {
-        request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+        request.files
+            .add(await http.MultipartFile.fromPath('image', imageFile.path));
       } else if (kIsWeb && webImage != null) {
         final bytes = await webImage.readAsBytes();
         final ext = webImage.name.split('.').last.toLowerCase();
@@ -77,16 +80,12 @@ class PostService {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('Response status: ${response.statusCode}');
-      print('Response body: ${response.body}');
-
       if (response.statusCode == 201 || response.statusCode == 200) {
         return Post.fromJson(json.decode(response.body));
       } else {
-        throw Exception('Gagal membuat postingan: ${response.statusCode} - ${response.body}');
+        throw Exception('Gagal membuat postingan: ${response.body}');
       }
     } catch (e) {
-      print('Error creating post: $e');
       throw Exception('Gagal membuat postingan: $e');
     }
   }
@@ -110,7 +109,8 @@ class PostService {
     if (albumId != null) request.fields['album_id'] = albumId.toString();
 
     if (!kIsWeb && imageFile != null) {
-      request.files.add(await http.MultipartFile.fromPath('image', imageFile.path));
+      request.files
+          .add(await http.MultipartFile.fromPath('image', imageFile.path));
     } else if (kIsWeb && webImage != null) {
       final bytes = await webImage.readAsBytes();
       final ext = webImage.name.split('.').last.toLowerCase();
@@ -145,6 +145,7 @@ class PostService {
     }
   }
 
+  // Ambil album user
   Future<List<Map<String, dynamic>>> getUserAlbums(String token) async {
     final uri = Uri.parse('$baseUrl/albums');
     final response = await http.get(uri, headers: {
@@ -153,28 +154,25 @@ class PostService {
     });
 
     if (response.statusCode == 200) {
-      try {
-        final data = json.decode(response.body) as List;
-        return data.map((e) {
-          final dynamic rawId = e['id'] ?? e['album_id'] ?? e['id_album'];
-          final int parsedId = rawId is int
-              ? rawId
-              : int.tryParse(rawId?.toString() ?? '') ?? 0;
-          final String name = (e['nama_album'] ?? e['name'] ?? e['title'] ?? '').toString();
-          return {
-            'id': parsedId,
-            'name': name,
-          };
-        }).toList();
-      } catch (_) {
-        throw Exception('Format album tidak valid: ${response.body}');
-      }
+      final data = json.decode(response.body) as List;
+      return data.map((e) {
+        final dynamic rawId = e['id'] ?? e['album_id'] ?? e['id_album'];
+        final int parsedId =
+            rawId is int ? rawId : int.tryParse(rawId?.toString() ?? '') ?? 0;
+        final String name =
+            (e['nama_album'] ?? e['name'] ?? e['title'] ?? '').toString();
+        return {
+          'id': parsedId,
+          'name': name,
+        };
+      }).toList();
     } else {
       throw Exception('Gagal mengambil album: ${response.body}');
     }
   }
 
-  // Like post
+  // ================== LIKE ==================
+
   Future<Map<String, dynamic>> likePost(String token, int postId) async {
     final uri = Uri.parse('$baseUrl/social/posts/$postId/like');
     final response = await http.post(uri, headers: {
@@ -189,7 +187,6 @@ class PostService {
     }
   }
 
-  // Unlike post
   Future<Map<String, dynamic>> unlikePost(String token, int postId) async {
     final uri = Uri.parse('$baseUrl/social/posts/$postId/unlike');
     final response = await http.delete(uri, headers: {
@@ -204,7 +201,6 @@ class PostService {
     }
   }
 
-  // Cek status like
   Future<Map<String, dynamic>> checkLikeStatus(String token, int postId) async {
     final uri = Uri.parse('$baseUrl/social/posts/$postId/like-status');
     final response = await http.get(uri, headers: {
@@ -219,9 +215,13 @@ class PostService {
     }
   }
 
-    // Ambil komentar di sebuah post
-  Future<Map<String, dynamic>> getComments(String token, int postId,
-      {int page = 1}) async {
+  // ================== COMMENT ==================
+
+  Future<Map<String, dynamic>> getComments(
+    String token,
+    int postId, {
+    int page = 1,
+  }) async {
     final uri = Uri.parse('$baseUrl/social/posts/$postId/comments?page=$page');
     final response = await http.get(uri, headers: {
       'Authorization': 'Bearer $token',
@@ -235,9 +235,11 @@ class PostService {
     }
   }
 
-  // Tambah komentar
   Future<Map<String, dynamic>> addComment(
-      String token, int postId, String isiKomentar) async {
+    String token,
+    int postId,
+    String isiKomentar,
+  ) async {
     final uri = Uri.parse('$baseUrl/social/posts/$postId/comments');
     final response = await http.post(
       uri,
@@ -256,9 +258,11 @@ class PostService {
     }
   }
 
-    // Update komentar
   Future<Map<String, dynamic>> updateComment(
-      String token, int commentId, String isiKomentar) async {
+    String token,
+    int commentId,
+    String isiKomentar,
+  ) async {
     final uri = Uri.parse('$baseUrl/social/comments/$commentId');
     final response = await http.put(
       uri,
@@ -277,7 +281,6 @@ class PostService {
     }
   }
 
-  // Hapus komentar
   Future<void> deleteComment(String token, int commentId) async {
     final uri = Uri.parse('$baseUrl/social/comments/$commentId');
     final response = await http.delete(
@@ -293,5 +296,45 @@ class PostService {
     }
   }
 
+// ================== REPORT ==================
+  Future<Map<String, dynamic>> reportPost(
+    String token,
+    int postId, {
+    String alasan = "Konten tidak pantas",
+  }) async {
+    final uri = Uri.parse('$baseUrl/social/posts/$postId/report');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({"alasan": alasan}),
+    );
 
+    if (response.statusCode == 201 || response.statusCode == 200) {
+      return json.decode(response.body);
+    } else {
+      throw Exception('Gagal melaporkan postingan: ${response.body}');
+    }
+  }
+
+  Future<void> reportComment(String token, int commentId,
+      {required String alasan}) async {
+    final uri = Uri.parse('$baseUrl/social/comments/$commentId/report');
+    final response = await http.post(
+      uri,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({'alasan': alasan}),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Gagal melaporkan komentar: ${response.body}');
+    }
+  }
 }
