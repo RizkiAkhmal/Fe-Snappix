@@ -195,45 +195,124 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         final c = _comments[index];
                         final user = c['user'];
                         final commentId = c['id'].toString();
-                        return ListTile(
-                          leading:
-                              const Icon(Icons.comment, color: Colors.orange),
-                          title: Text(c['isi_komentar'] ?? ''),
-                          subtitle: Text(
-                              user != null ? user['name'] ?? "User" : "Anonim"),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) async {
-                              if (value == 'edit') {
-                                _startEditComment(
-                                    commentId, c['isi_komentar'] ?? '');
-                              } else if (value == 'delete') {
-                                await _deleteComment(commentId);
-                                modalSetState(() {}); // update modal
-                              } else if (value == 'report') {
-                                await _reportComment(commentId);
-                              }
-                            },
-                            itemBuilder: (context) {
-                              if (_userId == c['user_id'].toString()) {
-                                return const [
-                                  PopupMenuItem(
-                                    value: 'edit',
-                                    child: Text("Edit"),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Text("Hapus"),
-                                  ),
-                                ];
-                              } else {
-                                return const [
-                                  PopupMenuItem(
-                                    value: 'report',
-                                    child: Text("Laporkan"),
-                                  ),
-                                ];
-                              }
-                            },
+                        final userName =
+                            user != null ? user['name'] ?? "User" : "Anonim";
+                        final avatarUrl = user?['avatar'] ??
+                            "https://i.pravatar.cc/150?img=${index + 10}";
+
+                        return Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Avatar user
+                              CircleAvatar(
+                                radius: 20,
+                                backgroundImage: NetworkImage(avatarUrl),
+                                backgroundColor: Colors.grey.shade300,
+                              ),
+                              const SizedBox(width: 10),
+
+                              // Nama + komentar
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // Nama user
+                                    Text(
+                                      userName,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+
+                                    // Isi komentar
+                                    Text(
+                                      c['isi_komentar'] ?? '',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              // Tombol menu kecil
+                              PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.more_vert,
+                                    size: 20, color: Colors.grey),
+                                onSelected: (value) async {
+                                  if (value == 'edit') {
+                                    _startEditComment(
+                                        commentId, c['isi_komentar'] ?? '');
+                                  } else if (value == 'delete') {
+                                    await _deleteComment(commentId);
+                                    modalSetState(() {});
+                                  } else if (value == 'report') {
+                                    await _reportComment(commentId);
+                                  }
+                                },
+                                itemBuilder: (context) {
+                                  if (_userId == c['user_id'].toString()) {
+                                    return const [
+                                      PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.edit, size: 18),
+                                            SizedBox(width: 6),
+                                            Text("Edit"),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.delete,
+                                                color: Colors.red, size: 18),
+                                            SizedBox(width: 6),
+                                            Text("Hapus",
+                                                style: TextStyle(
+                                                    color: Colors.red)),
+                                          ],
+                                        ),
+                                      ),
+                                    ];
+                                  } else {
+                                    return const [
+                                      PopupMenuItem(
+                                        value: 'report',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.flag,
+                                                color: Colors.red, size: 18),
+                                            SizedBox(width: 6),
+                                            Text("Laporkan",
+                                                style: TextStyle(
+                                                    color: Colors.red)),
+                                          ],
+                                        ),
+                                      ),
+                                    ];
+                                  }
+                                },
+                              ),
+                            ],
                           ),
                         );
                       },
@@ -246,66 +325,98 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         ),
                     child: Row(
                       children: [
-                        const CircleAvatar(
-                            radius: 18, child: Icon(Icons.person)),
+                        // Avatar dummy
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundImage: NetworkImage(
+                              "https://i.pravatar.cc/150?img=10"), // dummy profile
+                          backgroundColor: Colors.grey.shade400,
+                        ),
                         const SizedBox(width: 8),
+
+                        // Input komentar
                         Expanded(
-                          child: TextField(
-                            controller: _commentController,
-                            decoration: InputDecoration(
-                              hintText: _editingCommentId != null
-                                  ? "Edit komentar..."
-                                  : "Tambahkan komentar...",
-                              border: const OutlineInputBorder(),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(25),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black12,
+                                  blurRadius: 3,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: TextField(
+                              controller: _commentController,
+                              decoration: InputDecoration(
+                                hintText: _editingCommentId != null
+                                    ? "Edit komentar..."
+                                    : "Tambahkan komentar...",
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                              ),
                             ),
                           ),
                         ),
-                        IconButton(
-                          icon: Icon(
-                            _editingCommentId != null
-                                ? Icons.check
-                                : Icons.send,
-                            color: Colors.blue,
-                          ),
-                          onPressed: () async {
-                            if (_token == null ||
-                                _commentController.text.trim().isEmpty) return;
 
-                            try {
-                              if (_editingCommentId != null) {
-                                await _postService.updateComment(
-                                  _token!,
-                                  int.parse(_editingCommentId!),
-                                  _commentController.text.trim(),
-                                );
-                                await _fetchComments();
-                                setState(() => _editingCommentId = null);
-                                modalSetState(() {});
-                              } else {
-                                final result = await _postService.addComment(
-                                  _token!,
-                                  widget.post.id,
-                                  _commentController.text.trim(),
-                                );
-                                setState(() {
-                                  _comments.insert(0, result['comment']);
-                                });
-                                modalSetState(() {});
-                              }
-                              _commentController.clear();
-                            } catch (e) {
-                              if (context.mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
+                        const SizedBox(width: 8),
+                        // Tombol kirim merah
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              _editingCommentId != null
+                                  ? Icons.check
+                                  : Icons.send,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            onPressed: () async {
+                              if (_token == null ||
+                                  _commentController.text.trim().isEmpty)
+                                return;
+
+                              try {
+                                if (_editingCommentId != null) {
+                                  await _postService.updateComment(
+                                    _token!,
+                                    int.parse(_editingCommentId!),
+                                    _commentController.text.trim(),
+                                  );
+                                  await _fetchComments();
+                                  setState(() => _editingCommentId = null);
+                                  modalSetState(() {});
+                                } else {
+                                  final result = await _postService.addComment(
+                                    _token!,
+                                    widget.post.id,
+                                    _commentController.text.trim(),
+                                  );
+                                  setState(() {
+                                    _comments.insert(0, result['comment']);
+                                  });
+                                  modalSetState(() {});
+                                }
+                                _commentController.clear();
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
                                       content:
-                                          Text("Gagal menyimpan komentar: $e")),
-                                );
+                                          Text("Gagal menyimpan komentar: $e"),
+                                    ),
+                                  );
+                                }
                               }
-                            }
-                          },
-                        )
+                            },
+                          ),
+                        ),
                       ],
                     ),
                   )
