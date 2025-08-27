@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:fe_snappix/models/post_model.dart';
 import 'package:fe_snappix/services/post_service.dart';
 import 'package:fe_snappix/config/api_config.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class PostDetailPage extends StatefulWidget {
   final Post post;
@@ -198,9 +199,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           leading:
                               const Icon(Icons.comment, color: Colors.orange),
                           title: Text(c['isi_komentar'] ?? ''),
-                          subtitle: Text(user != null
-                              ? user['name'] ?? "User"
-                              : "Anonim"),
+                          subtitle: Text(
+                              user != null ? user['name'] ?? "User" : "Anonim"),
                           trailing: PopupMenuButton<String>(
                             onSelected: (value) async {
                               if (value == 'edit') {
@@ -271,8 +271,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           ),
                           onPressed: () async {
                             if (_token == null ||
-                                _commentController.text.trim().isEmpty)
-                              return;
+                                _commentController.text.trim().isEmpty) return;
 
                             try {
                               if (_editingCommentId != null) {
@@ -300,8 +299,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                      content: Text(
-                                          "Gagal menyimpan komentar: $e")),
+                                      content:
+                                          Text("Gagal menyimpan komentar: $e")),
                                 );
                               }
                             }
@@ -330,20 +329,63 @@ class _PostDetailPageState extends State<PostDetailPage> {
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
-                border: Border.all(),
                 borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26, // warna shadow
+                    blurRadius: 12, // seberapa lembut bayangan
+                    offset: const Offset(0, 6), // arah bayangan ke bawah
+                  ),
+                ],
               ),
-              clipBehavior: Clip.hardEdge,
-              child: Image.network(
-                post.imageUrl,
-                fit: BoxFit.cover,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return SizedBox(
-                    height: 200,
-                    child: const Center(child: CircularProgressIndicator()),
-                  );
-                },
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Stack(
+                  children: [
+                    // Foto utama
+                    Image.network(
+                      post.imageUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return SizedBox(
+                          height: 200,
+                          child:
+                              const Center(child: CircularProgressIndicator()),
+                        );
+                      },
+                    ),
+
+                    // Tombol Back (pojok kiri atas)
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: GestureDetector(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black38,
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            CupertinoIcons.chevron_back,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           else
@@ -351,113 +393,175 @@ class _PostDetailPageState extends State<PostDetailPage> {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.grey.shade200,
-                border: Border.all(color: Colors.orange, width: 2),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Icon(Icons.image_not_supported, size: 80),
             ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: _loading ? null : _toggleLike,
-                  icon: Icon(
-                    _isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: _isLiked ? Colors.red : Colors.black,
-                    size: 28,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: [
+                  // 🔹 Avatar + Username di kiri
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundImage: const NetworkImage(
+                      "https://i.pravatar.cc/150?img=5",
+                    ),
+                    backgroundColor: Colors.grey.shade300,
                   ),
-                ),
-                IconButton(
-                  onPressed: _showCommentsSheet,
-                  icon: const Icon(Icons.mode_comment_outlined, size: 26),
-                ),
-                const Spacer(),
-                PopupMenuButton<String>(
-                  onSelected: (value) async {
-                    if (value == 'delete') {
-                      if (_token != null) {
-                        try {
-                          await _postService.deletePost(
-                              _token!, widget.post.id);
-                          if (context.mounted) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      "Postingan berhasil dihapus")),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      "Gagal hapus postingan: $e")),
-                            );
-                          }
-                        }
-                      }
-                    } else if (value == 'report') {
-                      if (_token != null) {
-                        try {
-                          await _postService.reportPost(
-                            _token!,
-                            widget.post.id,
-                            alasan: "Konten tidak pantas",
-                          );
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text(
-                                      "Postingan berhasil dilaporkan")),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      "Gagal melaporkan postingan: $e")),
-                            );
-                          }
-                        }
-                      }
-                    }
-                  },
-                  itemBuilder: (context) {
-                    if (_userId == widget.post.userId.toString()) {
-                      return const [
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text("Hapus"),
+                  const SizedBox(width: 8),
+                  Text(
+                    post.userName ?? "User",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+
+                  const Spacer(),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: _loading ? null : _toggleLike,
+                        icon: SvgPicture.asset(
+                          _isLiked
+                              ? 'assets/icons/like-fill.svg'
+                              : 'assets/icons/like-outline.svg',
+                          height: 26,
+                          width: 26,
+                          colorFilter: _isLiked
+                              ? const ColorFilter.mode(
+                                  Colors.red, BlendMode.srcIn)
+                              : const ColorFilter.mode(
+                                  Colors.black87, BlendMode.srcIn),
                         ),
-                      ];
-                    } else {
-                      return const [
-                        PopupMenuItem(
-                          value: 'report',
-                          child: Text("Laporkan"),
+                      ),
+
+                      Text(
+                        '$_likesCount ${_likesCount == 1 ? "Likes" : "Likes"}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
                         ),
-                      ];
-                    }
-                  },
-                  icon: const Icon(Icons.more_vert, size: 26),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text("$_likesCount suka",
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-          ),
+                      ),
+
+                      const SizedBox(width: 16),
+
+                      IconButton(
+                        onPressed: _showCommentsSheet,
+                        icon: SvgPicture.asset(
+                          'assets/icons/chat.svg',
+                          height: 26,
+                          width: 26,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.black87,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      // ⋯ Menu
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_horiz,
+                            size: 24, color: Colors.black87),
+                        onSelected: (value) async {
+                          if (value == 'delete') {
+                            if (_token != null) {
+                              try {
+                                await _postService.deletePost(
+                                    _token!, widget.post.id);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content:
+                                            Text("Postingan berhasil dihapus")),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text("Gagal hapus postingan: $e")),
+                                  );
+                                }
+                              }
+                            }
+                          } else if (value == 'report') {
+                            if (_token != null) {
+                              try {
+                                await _postService.reportPost(
+                                  _token!,
+                                  widget.post.id,
+                                  alasan: "Konten tidak pantas",
+                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Postingan berhasil dilaporkan")),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            "Gagal melaporkan postingan: $e")),
+                                  );
+                                }
+                              }
+                            }
+                          }
+                        },
+                        itemBuilder: (context) {
+                          if (_userId == widget.post.userId.toString()) {
+                            return const [
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete, color: Colors.red),
+                                    SizedBox(width: 6),
+                                    Text("Hapus",
+                                        style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ];
+                          } else {
+                            return const [
+                              PopupMenuItem(
+                                value: 'report',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.flag, color: Colors.red),
+                                    SizedBox(width: 6),
+                                    Text("Laporkan",
+                                        style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ];
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              )),
           if (post.caption.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: RichText(
                 text: TextSpan(
-                  style: const TextStyle(color: Colors.black),
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 16, // lebih besar dari sebelumnya
+                  ),
                   children: [
                     TextSpan(
                       text: "${post.userName ?? "User"} ",
@@ -470,25 +574,30 @@ class _PostDetailPageState extends State<PostDetailPage> {
             ),
           if (_comments.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: GestureDetector(
                 onTap: _showCommentsSheet,
                 child: Text(
                   "Lihat semua ${_comments.length} komentar",
-                  style: const TextStyle(color: Colors.grey),
+                  style: GoogleFonts.inter(
+                    color: Colors.grey,
+                    fontSize: 15, // lebih besar
+                  ),
                 ),
               ),
             ),
           if (_comments.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: RichText(
                 text: TextSpan(
-                  style: const TextStyle(color: Colors.black),
+                  style: GoogleFonts.inter(
+                    color: Colors.black,
+                    fontSize: 16, // lebih besar
+                  ),
                   children: [
                     TextSpan(
-                      text:
-                          "${_comments.first['user']?['name'] ?? "User"} ",
+                      text: "${_comments.first['user']?['name'] ?? "User"} ",
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                     TextSpan(text: _comments.first['isi_komentar'] ?? ''),
@@ -496,11 +605,16 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 ),
               ),
             ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text("Postingan Lain",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Text(
+              "Lainnya untuk dijelajahi",
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.bold,
+                fontSize: 17,
+              ),
+            ),
           ),
           if (_loadingPosts)
             const Center(child: CircularProgressIndicator())
@@ -538,36 +652,175 @@ class _PostDetailPageState extends State<PostDetailPage> {
   }
 }
 
-class _PostCard extends StatelessWidget {
+class _PostCard extends StatefulWidget {
   final Post post;
+
   const _PostCard({required this.post});
 
   @override
+  State<_PostCard> createState() => _PostCardState();
+}
+
+class _PostCardState extends State<_PostCard> {
+  String? _currentUserId;
+  String? _token;
+  late final PostService _postService = PostService(baseUrl: ApiConfig.baseUrl);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _currentUserId = prefs.getString("user_id");
+      _token = prefs.getString("token");
+    });
+  }
+
+  Future<void> _deletePost() async {
+    if (_token == null) return;
+    try {
+      await _postService.deletePost(_token!, widget.post.id);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Postingan berhasil dihapus")),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal hapus postingan: $e")),
+        );
+      }
+    }
+  }
+
+  Future<void> _reportPost() async {
+    if (_token == null) return;
+    try {
+      await _postService.reportPost(
+        _token!,
+        widget.post.id,
+        alasan: "Konten tidak pantas",
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Postingan berhasil dilaporkan")),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal melaporkan postingan: $e")),
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(14),
-          child: post.imageUrl.isNotEmpty
-              ? Image.network(post.imageUrl, fit: BoxFit.cover)
-              : Container(
-                  height: 150,
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 8), // konsisten dengan PostDetailPage
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Gambar postingan
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              widget.post.imageUrl,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return Container(
                   color: Colors.grey.shade200,
-                  child: const Icon(Icons.image_not_supported),
-                ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          post.caption.isNotEmpty ? post.caption : "(Tanpa judul)",
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.bold,
-            fontSize: 13.5,
+                  height: 180,
+                  child: const Center(child: CupertinoActivityIndicator()),
+                );
+              },
+              errorBuilder: (context, _, __) => Container(
+                color: Colors.grey.shade200,
+                height: 180,
+                child: const Icon(Icons.broken_image, color: Colors.grey),
+              ),
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 8),
+
+          // Caption + Menu
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Caption
+              Expanded(
+                child: Text(
+                  widget.post.caption.isNotEmpty
+                      ? widget.post.caption
+                      : '(Tanpa judul)',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              // Menu
+              PopupMenuButton<String>(
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                icon: const Icon(
+                  CupertinoIcons.ellipsis,
+                  size: 20,
+                  color: Colors.black,
+                ),
+                onSelected: (value) async {
+                  if (value == 'hapus') await _deletePost();
+                  if (value == 'laporkan') await _reportPost();
+                },
+                itemBuilder: (context) {
+                  if (_currentUserId == widget.post.userId.toString()) {
+                    return const [
+                      PopupMenuItem(
+                        value: 'hapus',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Hapus', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      )
+                    ];
+                  } else {
+                    return const [
+                      PopupMenuItem(
+                        value: 'laporkan',
+                        child: Row(
+                          children: [
+                            Icon(Icons.flag, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Laporkan',
+                                style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      )
+                    ];
+                  }
+                },
+              )
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

@@ -124,7 +124,6 @@ class HomePageState extends State<HomePage> {
           ],
         ),
       ),
-      // ❌ FloatingActionButton dihapus
     );
   }
 }
@@ -189,8 +188,14 @@ class _PostCard extends StatelessWidget {
               const SizedBox(width: 8),
               PopupMenuButton<String>(
                 padding: EdgeInsets.zero,
-                icon: const Icon(CupertinoIcons.ellipsis,
-                    size: 20, color: Colors.black),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                icon: const Icon(
+                  CupertinoIcons.ellipsis,
+                  size: 20,
+                  color: Colors.black,
+                ),
                 onSelected: (value) async {
                   final token = await SharedPreferences.getInstance()
                       .then((prefs) => prefs.getString("token"));
@@ -221,9 +226,9 @@ class _PostCard extends StatelessWidget {
                     }
                   } else if (value == 'laporkan') {
                     try {
-                      await PostService(baseUrl: ApiConfig.baseUrl)
-                          .reportPost(token, post.id,
-                              alasan: "Konten tidak pantas");
+                      await PostService(baseUrl: ApiConfig.baseUrl).reportPost(
+                          token, post.id,
+                          alasan: "Konten tidak pantas");
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
@@ -242,19 +247,35 @@ class _PostCard extends StatelessWidget {
                 },
                 itemBuilder: (context) => [
                   if (currentUserId == post.userId.toString())
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'hapus',
-                      child: Text('Hapus',
-                          style: TextStyle(color: Colors.red)),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.delete, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text(
+                            'Hapus',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
+                      ),
                     )
                   else
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'laporkan',
-                      child: Text('Laporkan',
-                          style: TextStyle(color: Colors.red)),
+                      child: Row(
+                        children: const [
+                          Icon(Icons.flag, color: Color.fromARGB(255, 255, 0, 0)),
+                          SizedBox(width: 8),
+                          Text(
+                            'Laporkan',
+                            style: TextStyle(color: Color.fromARGB(255, 255, 0, 0)),
+                          ),
+                        ],
+                      ),
                     ),
                 ],
-              ),
+              )
             ],
           ),
         ],

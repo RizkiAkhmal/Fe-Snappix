@@ -16,7 +16,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'My App',
-      home: const SplashScreen(), // mulai dari SplashScreen
+      home: const SplashScreen(), // mulai dari SplashScreench
       routes: {
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
