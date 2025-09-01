@@ -13,4 +13,38 @@ class ApiConfig {
     // iOS simulator/desktop biasanya bisa akses 127.0.0.1 langsung
     return 'http://127.0.0.1:8000/api';
   }
+
+  // Base origin tanpa suffix "/api" untuk akses file di storage
+  static String get baseOrigin {
+    final url = baseUrl;
+    // hapus trailing "/api" jika ada
+    if (url.endsWith('/api')) {
+      return url.substring(0, url.length - 4);
+    }
+    return url;
+  }
+
+  // Normalisasi path media agar bisa diakses di semua platform
+  static String resolveMediaUrl(String? path) {
+    if (path == null || path.isEmpty) {
+      return 'https://i.pravatar.cc/300';
+    }
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+
+    // Hilangkan leading slash agar tidak double slash saat join
+    final normalized = path.startsWith('/') ? path.substring(1) : path;
+
+    // Jika path sudah diawali "storage/" atau "public/storage/", tetap gunakan seperti itu
+    if (normalized.startsWith('storage/')) {
+      return '$baseOrigin/$normalized';
+    }
+    if (normalized.startsWith('public/storage/')) {
+      return '$baseOrigin/${normalized.replaceFirst('public/', '')}';
+    }
+
+    // Default: anggap path adalah relative ke storage
+    return '$baseOrigin/storage/$normalized';
+  }
 }

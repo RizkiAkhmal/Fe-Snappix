@@ -2,11 +2,12 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/post_model.dart';
+import 'package:fe_snappix/config/api_config.dart';
 
 class ProfileService {
   final String baseUrl;
 
-  ProfileService({this.baseUrl = 'http://127.0.0.1:8000/api'});
+  ProfileService({String? baseUrl}) : baseUrl = baseUrl ?? ApiConfig.baseUrl;
 
   /// Ambil profil user
   Future<Map<String, dynamic>> getProfile(String token) async {

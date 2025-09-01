@@ -346,7 +346,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 child: Stack(
                   children: [
                     Image.network(
-                      post.imageUrl,
+                      ApiConfig.resolveMediaUrl(post.imageUrl),
                       fit: BoxFit.cover,
                       width: double.infinity,
                       loadingBuilder: (context, child, loadingProgress) {
@@ -516,7 +516,7 @@ class _PostCardState extends State<_PostCard> {
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: Image.network(
-              widget.post.imageUrl,
+              ApiConfig.resolveMediaUrl(widget.post.imageUrl),
               fit: BoxFit.cover,
               width: double.infinity,
               loadingBuilder: (context, child, progress) {

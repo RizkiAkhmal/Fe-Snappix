@@ -159,7 +159,15 @@ class _MainPageState extends State<MainPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _currentIndex == 2 ? const SizedBox() : _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          _pages[0],
+          _pages[1],
+          const SizedBox(),
+          _pages[3],
+        ],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,

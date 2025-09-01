@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/profile_service.dart';
+import 'package:fe_snappix/config/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/post_model.dart';
-import '../models/album_model.dart'; // <- import Album
+import '../models/album_model.dart';
 import 'edit_profile_page.dart';
+import 'album_detail_page.dart';
 import 'post_detail_page.dart';
 import 'login_page.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -43,7 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
       final posts = await _service.getMyPosts(token);
       final albumsData = await _service.getMyAlbums(token);
 
-      final albums = albumsData.map<Album>((json) => Album.fromJson(json)).toList();
+      final albums = Album.listFromJson(albumsData);
 
       if (!mounted) return;
       setState(() {
@@ -86,10 +88,7 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String _buildImageUrl(String? path) {
-    if (path == null || path.isEmpty) return 'https://i.pravatar.cc/300';
-    return path.startsWith('http')
-        ? path
-        : 'http://127.0.0.1:8000/storage/$path';
+    return ApiConfig.resolveMediaUrl(path);
   }
 
   @override
@@ -113,14 +112,23 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 12),
             Text(
-              _profile?['username'] ?? 'Username',
+              _profile?['name'] ?? _profile?['username'] ?? 'User',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            Text(
-              _profile?['email'] ?? '@email',
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
+            if (_profile?['username'] != null)
+              Text(
+                '@${_profile!['username']}',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            if (_profile?['email'] != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text(
+                  _profile!['email'],
+                  style: const TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+              ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -208,7 +216,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     },
                                   ),
                                 ),
-                          // Album List menggunakan model Album
+                          // Album List dengan cover yang benar
                           _myAlbums.isEmpty
                               ? const Center(child: Text('Belum ada album'))
                               : ListView.builder(
@@ -217,16 +225,28 @@ class _ProfilePageState extends State<ProfilePage> {
                                     final album = _myAlbums[index];
                                     return ListTile(
                                       leading: CircleAvatar(
-                                        backgroundImage: NetworkImage(
-                                          _buildImageUrl(album.deskripsi),
-                                          // jika ada cover di API, bisa diganti dengan album.cover
-                                        ),
+                                        backgroundImage: album.coverUrl != null
+                                            ? NetworkImage(_buildImageUrl(album.coverUrl))
+                                            : null,
+                                        child: album.coverUrl == null 
+                                            ? const Icon(Icons.photo_album_outlined, color: Colors.grey)
+                                            : null,
                                       ),
                                       title: Text(album.namaAlbum),
                                       subtitle: Text(album.deskripsi),
-                                      onTap: () {
-                                        // Navigasi ke detail album bisa ditambahkan
-                                      },
+                                      // onTap: () {
+                                      //   if (_token != null && album.id != null) {
+                                      //     Navigator.push(
+                                      //       context,
+                                      //       MaterialPageRoute(
+                                      //         builder: (_) => AlbumDetailPage(
+                                      //           albumId: album.id!,
+                                      //           token: _token!,
+                                      //         ),
+                                      //       ),
+                                      //     );
+                                      //   }
+                                      // },
                                     );
                                   },
                                 ),
