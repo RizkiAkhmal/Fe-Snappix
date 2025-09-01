@@ -234,19 +234,21 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                       title: Text(album.namaAlbum),
                                       subtitle: Text(album.deskripsi),
-                                      // onTap: () {
-                                      //   if (_token != null && album.id != null) {
-                                      //     Navigator.push(
-                                      //       context,
-                                      //       MaterialPageRoute(
-                                      //         builder: (_) => AlbumDetailPage(
-                                      //           albumId: album.id!,
-                                      //           token: _token!,
-                                      //         ),
-                                      //       ),
-                                      //     );
-                                      //   }
-                                      // },
+                                      onTap: () {
+                                        if (_token != null &&
+                                            album.id != null) {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => AlbumDetailPage(
+                                                albumId: album.id!,
+                                                token: _token!,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
+
                                     );
                                   },
                                 ),

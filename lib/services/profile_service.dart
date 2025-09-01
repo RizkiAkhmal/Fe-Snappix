@@ -19,7 +19,11 @@ class ProfileService {
 
     if (res.statusCode == 200) {
       final body = json.decode(res.body);
-      return body['user'] ?? {};
+      // Handle both direct user object and wrapped user object
+      if (body is Map<String, dynamic>) {
+        return body['user'] ?? body; // Try 'user' key first, then direct body
+      }
+      return {};
     } else {
       throw Exception('Gagal load profil: ${res.body}');
     }
