@@ -11,7 +11,9 @@ import 'login_page.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final ValueNotifier<int>? refreshTrigger;
+
+  const ProfilePage({super.key, this.refreshTrigger});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -25,11 +27,28 @@ class _ProfilePageState extends State<ProfilePage> {
   List<Album> _myAlbums = [];
   bool _loading = true;
 
+  VoidCallback? _refreshListener;
+
   @override
   void initState() {
     super.initState();
     _service = ProfileService();
     _loadData();
+
+    if (widget.refreshTrigger != null) {
+      _refreshListener = () {
+        _loadData();
+      };
+      widget.refreshTrigger!.addListener(_refreshListener!);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.refreshTrigger != null && _refreshListener != null) {
+      widget.refreshTrigger!.removeListener(_refreshListener!);
+    }
+    super.dispose();
   }
 
   Future<void> _loadData() async {
@@ -74,7 +93,7 @@ class _ProfilePageState extends State<ProfilePage> {
           onUpdated: _loadData,
         ),
       ),
-    );
+    ).then((_) => _loadData());
   }
 
   void _logout() async {
@@ -101,6 +120,8 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _loadData,
         child: Column(
           children: [
             const SizedBox(height: 16),
@@ -112,23 +133,23 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             const SizedBox(height: 12),
             Text(
-              _profile?['name'] ?? _profile?['username'] ?? 'User',
+                _profile?['name'] ?? _profile?['username'] ?? 'User',
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            if (_profile?['username'] != null)
-              Text(
-                '@${_profile!['username']}',
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
-              ),
-            if (_profile?['email'] != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text(
-                  _profile!['email'],
+              if (_profile?['username'] != null)
+            Text(
+                  '@${_profile!['username']}',
                   style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
-              ),
+              if (_profile?['email'] != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    _profile!['email'],
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+            ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -155,10 +176,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 length: 2,
                 child: Column(
                   children: [
-                    TabBar(
+                      const TabBar(
                       labelColor: Colors.black,
                       unselectedLabelColor: Colors.grey,
-                      tabs: const [
+                        tabs: [
                         Tab(text: 'Postingan'),
                         Tab(text: 'Album'),
                       ],
@@ -186,7 +207,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                               builder: (_) =>
                                                   PostDetailPage(post: post),
                                             ),
-                                          );
+                                            ).then((_) => _loadData());
                                         },
                                         child: Column(
                                           crossAxisAlignment:
@@ -208,7 +229,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                               style: const TextStyle(
-                                                  fontWeight: FontWeight.bold),
+                                                    fontWeight:
+                                                        FontWeight.bold),
                                             ),
                                           ],
                                         ),
@@ -216,7 +238,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     },
                                   ),
                                 ),
-                          // Album List dengan cover yang benar
+                            // Album List
                           _myAlbums.isEmpty
                               ? const Center(child: Text('Belum ada album'))
                               : ListView.builder(
@@ -225,30 +247,31 @@ class _ProfilePageState extends State<ProfilePage> {
                                     final album = _myAlbums[index];
                                     return ListTile(
                                       leading: CircleAvatar(
-                                        backgroundImage: album.coverUrl != null
-                                            ? NetworkImage(_buildImageUrl(album.coverUrl))
-                                            : null,
-                                        child: album.coverUrl == null 
-                                            ? const Icon(Icons.photo_album_outlined, color: Colors.grey)
-                                            : null,
+                                          backgroundImage: album.coverUrl != null
+                                              ? NetworkImage(
+                                                  _buildImageUrl(album.coverUrl))
+                                              : null,
+                                          child: album.coverUrl == null
+                                              ? const Icon(
+                                                  Icons.photo_album_outlined,
+                                                  color: Colors.grey)
+                                              : null,
                                       ),
                                       title: Text(album.namaAlbum),
                                       subtitle: Text(album.deskripsi),
                                       onTap: () {
-                                        if (_token != null &&
-                                            album.id != null) {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (_) => AlbumDetailPage(
-                                                albumId: album.id!,
-                                                token: _token!,
+                                          if (_token != null && album.id != null) {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => AlbumDetailPage(
+                                                  albumId: album.id!,
+                                                  token: _token!,
+                                                ),
                                               ),
-                                            ),
-                                          );
-                                        }
+                                            ).then((_) => _loadData());
+                                          }
                                       },
-
                                     );
                                   },
                                 ),
@@ -260,6 +283,7 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
             ),
           ],
+          ),
         ),
       ),
     );

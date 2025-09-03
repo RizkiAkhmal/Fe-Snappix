@@ -45,14 +45,20 @@ class _AddAlbumPageState extends State<AddAlbumPage> {
 
       _nameController.clear();
       _descriptionController.clear();
+
+      if (mounted) {
+        Navigator.pop(context, true); // kembali dengan sukses
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menyimpan album: $e')),
       );
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

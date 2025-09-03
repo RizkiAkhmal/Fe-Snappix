@@ -23,6 +23,9 @@ class _MainPageState extends State<MainPage> {
   // Tambah GlobalKey supaya bisa akses state HomePage
   final GlobalKey<HomePageState> _homeKey = GlobalKey<HomePageState>();
 
+  // Notifier untuk memicu refresh ProfilePage
+  final ValueNotifier<int> _profileRefresh = ValueNotifier<int>(0);
+
   late final List<Widget> _pages;
 
   // Inisialisasi PostService dengan baseUrl API
@@ -35,7 +38,7 @@ class _MainPageState extends State<MainPage> {
       HomePage(key: _homeKey),
       const SearchPage(),
       const SizedBox(), 
-      const ProfilePage(),
+      ProfilePage(refreshTrigger: _profileRefresh),
     ];
   }
 
@@ -74,10 +77,8 @@ class _MainPageState extends State<MainPage> {
                         ),
                       );
                       if (result == true) {
-                        setState(() {
-                          _currentIndex = 0; // balik ke Home
-                        });
-                        _homeKey.currentState?.reloadPosts();
+                        setState(() => _currentIndex = 3); // ke Profile
+                        _profileRefresh.value++;
                       }
                     },
                   ),
@@ -95,10 +96,8 @@ class _MainPageState extends State<MainPage> {
                         ),
                       );
                       if (result == true) {
-                        setState(() {
-                          _currentIndex = 0; // balik ke Home
-                        });
-                        _homeKey.currentState?.reloadPosts();
+                        setState(() => _currentIndex = 3); // ke Profile
+                        _profileRefresh.value++;
                       }
                     },
                   ),
