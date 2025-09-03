@@ -1,3 +1,4 @@
+import 'package:fe_snappix/pages/home_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
@@ -51,7 +52,8 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
     if (token != null) {
       try {
-        final result = await _postService.checkLikeStatus(token, widget.post.id);
+        final result =
+            await _postService.checkLikeStatus(token, widget.post.id);
         setState(() {
           _isLiked = result['is_liked'] ?? false;
           _likesCount = result['likes_count'] ?? 0;
@@ -182,23 +184,34 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   ),
                   const SizedBox(height: 12),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.grey[400], thickness: 1)),
+                        Expanded(
+                            child:
+                                Divider(color: Colors.grey[400], thickness: 1)),
                         const SizedBox(width: 8),
                         Text(
-                          _comments.isEmpty ? "Tidak ada komentar" : "${_comments.length} komentar",
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          _comments.isEmpty
+                              ? "Tidak ada komentar"
+                              : "${_comments.length} komentar",
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
                         ),
                         const SizedBox(width: 8),
-                        Expanded(child: Divider(color: Colors.grey[400], thickness: 1)),
+                        Expanded(
+                            child:
+                                Divider(color: Colors.grey[400], thickness: 1)),
                       ],
                     ),
                   ),
                   Expanded(
                     child: _comments.isEmpty
-                        ? const Center(child: Text("Belum ada komentar", style: TextStyle(color: Colors.grey, fontSize: 14)))
+                        ? const Center(
+                            child: Text("Belum ada komentar",
+                                style: TextStyle(
+                                    color: Colors.grey, fontSize: 14)))
                         : ListView.builder(
                             controller: controller,
                             itemCount: _comments.length,
@@ -206,38 +219,59 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               final c = _comments[index];
                               final user = c['user'];
                               final commentId = c['id'].toString();
-                              final userName = user != null ? user['name'] ?? "User" : "Anonim";
-                              final avatarUrl = user?['avatar'] ?? "https://i.pravatar.cc/150?img=${index + 10}";
+                              final userName = user != null
+                                  ? user['name'] ?? "User"
+                                  : "Anonim";
+                              final avatarUrl = user?['avatar'] ??
+                                  "https://i.pravatar.cc/150?img=${index + 10}";
 
                               return Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 6),
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
                                   color: Colors.grey.shade100,
                                   borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2))],
+                                  boxShadow: [
+                                    BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2))
+                                  ],
                                 ),
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    CircleAvatar(radius: 20, backgroundImage: NetworkImage(avatarUrl), backgroundColor: Colors.grey.shade300),
+                                    CircleAvatar(
+                                        radius: 20,
+                                        backgroundImage:
+                                            NetworkImage(avatarUrl),
+                                        backgroundColor: Colors.grey.shade300),
                                     const SizedBox(width: 10),
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
-                                          Text(userName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                          Text(userName,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 14)),
                                           const SizedBox(height: 4),
-                                          Text(c['isi_komentar'] ?? '', style: const TextStyle(fontSize: 14)),
+                                          Text(c['isi_komentar'] ?? '',
+                                              style: const TextStyle(
+                                                  fontSize: 14)),
                                         ],
                                       ),
                                     ),
                                     PopupMenuButton<String>(
                                       padding: EdgeInsets.zero,
-                                      icon: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                                      icon: const Icon(Icons.more_vert,
+                                          size: 20, color: Colors.grey),
                                       onSelected: (value) async {
                                         if (value == 'edit') {
-                                          _startEditComment(commentId, c['isi_komentar'] ?? '');
+                                          _startEditComment(commentId,
+                                              c['isi_komentar'] ?? '');
                                         } else if (value == 'delete') {
                                           await _deleteComment(commentId);
                                           modalSetState(() {});
@@ -246,14 +280,25 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                         }
                                       },
                                       itemBuilder: (context) {
-                                        if (_userId == c['user_id'].toString()) {
+                                        if (_userId ==
+                                            c['user_id'].toString()) {
                                           return const [
-                                            PopupMenuItem(value: 'edit', child: Text("Edit")),
-                                            PopupMenuItem(value: 'delete', child: Text("Hapus", style: TextStyle(color: Colors.red))),
+                                            PopupMenuItem(
+                                                value: 'edit',
+                                                child: Text("Edit")),
+                                            PopupMenuItem(
+                                                value: 'delete',
+                                                child: Text("Hapus",
+                                                    style: TextStyle(
+                                                        color: Colors.red))),
                                           ];
                                         } else {
                                           return const [
-                                            PopupMenuItem(value: 'report', child: Text("Laporkan", style: TextStyle(color: Colors.red))),
+                                            PopupMenuItem(
+                                                value: 'report',
+                                                child: Text("Laporkan",
+                                                    style: TextStyle(
+                                                        color: Colors.red))),
                                           ];
                                         }
                                       },
@@ -265,50 +310,82 @@ class _PostDetailPageState extends State<PostDetailPage> {
                           ),
                   ),
                   Padding(
-                    padding: MediaQuery.of(context).viewInsets.add(const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
+                    padding: MediaQuery.of(context).viewInsets.add(
+                        const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8)),
                     child: Row(
                       children: [
-                        CircleAvatar(radius: 18, backgroundImage: NetworkImage("https://i.pravatar.cc/150?img=10"), backgroundColor: Colors.grey.shade400),
+                        CircleAvatar(
+                            radius: 18,
+                            backgroundImage: NetworkImage(
+                                "https://i.pravatar.cc/150?img=10"),
+                            backgroundColor: Colors.grey.shade400),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Container(
                             decoration: BoxDecoration(
                               color: Colors.grey.shade100,
                               borderRadius: BorderRadius.circular(25),
-                              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 3, offset: const Offset(0, 2))],
+                              boxShadow: [
+                                BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 3,
+                                    offset: const Offset(0, 2))
+                              ],
                             ),
                             child: TextField(
                               controller: _commentController,
                               decoration: InputDecoration(
-                                hintText: _editingCommentId != null ? "Edit komentar..." : "Tambahkan komentar...",
+                                hintText: _editingCommentId != null
+                                    ? "Edit komentar..."
+                                    : "Tambahkan komentar...",
                                 border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          decoration: const BoxDecoration(
+                              color: Colors.red, shape: BoxShape.circle),
                           child: IconButton(
-                            icon: Icon(_editingCommentId != null ? Icons.check : Icons.send, color: Colors.white, size: 20),
+                            icon: Icon(
+                                _editingCommentId != null
+                                    ? Icons.check
+                                    : Icons.send,
+                                color: Colors.white,
+                                size: 20),
                             onPressed: () async {
-                              if (_token == null || _commentController.text.trim().isEmpty) return;
+                              if (_token == null ||
+                                  _commentController.text.trim().isEmpty)
+                                return;
                               try {
                                 if (_editingCommentId != null) {
-                                  await _postService.updateComment(_token!, int.parse(_editingCommentId!), _commentController.text.trim());
+                                  await _postService.updateComment(
+                                      _token!,
+                                      int.parse(_editingCommentId!),
+                                      _commentController.text.trim());
                                   await _fetchComments();
                                   setState(() => _editingCommentId = null);
                                   modalSetState(() {});
                                 } else {
-                                  final result = await _postService.addComment(_token!, widget.post.id, _commentController.text.trim());
-                                  setState(() => _comments.insert(0, result['comment']));
+                                  final result = await _postService.addComment(
+                                      _token!,
+                                      widget.post.id,
+                                      _commentController.text.trim());
+                                  setState(() =>
+                                      _comments.insert(0, result['comment']));
                                   modalSetState(() {});
                                 }
                                 _commentController.clear();
                               } catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal menyimpan komentar: $e")));
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text(
+                                              "Gagal menyimpan komentar: $e")));
                                 }
                               }
                             },
@@ -339,7 +416,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
               margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 12, offset: const Offset(0, 6))],
+                boxShadow: [
+                  BoxShadow(
+                      color: Colors.black26,
+                      blurRadius: 12,
+                      offset: const Offset(0, 6))
+                ],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
@@ -351,7 +433,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       width: double.infinity,
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
-                        return SizedBox(height: 200, child: const Center(child: CircularProgressIndicator()));
+                        return SizedBox(
+                            height: 200,
+                            child: const Center(
+                                child: CircularProgressIndicator()));
                       },
                     ),
                     Positioned(
@@ -361,8 +446,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                         onTap: () => Navigator.pop(context),
                         child: Container(
                           padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                          child: const Icon(CupertinoIcons.chevron_back, color: Colors.white, size: 22),
+                          decoration: BoxDecoration(
+                              color: Colors.black54, shape: BoxShape.circle),
+                          child: const Icon(CupertinoIcons.chevron_back,
+                              color: Colors.white, size: 22),
                         ),
                       ),
                     ),
@@ -370,39 +457,131 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 ),
               ),
             ),
-          // Avatar, username, like, comment, menu
+          // Avatar + username + like + comment + menu
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               children: [
-                CircleAvatar(radius: 16, backgroundImage: const NetworkImage("https://i.pravatar.cc/150?img=5")),
+                CircleAvatar(
+                    radius: 16,
+                    backgroundImage:
+                        const NetworkImage("https://i.pravatar.cc/150?img=5"),
+                    backgroundColor: Colors.grey.shade300),
                 const SizedBox(width: 8),
-                Text(post.userName ?? "User", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(post.userName ?? "User",
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600)),
                 const Spacer(),
                 Row(
                   children: [
                     IconButton(
                       onPressed: _loading ? null : _toggleLike,
                       icon: SvgPicture.asset(
-                        _isLiked ? 'assets/icons/like-fill.svg' : 'assets/icons/like-outline.svg',
+                        _isLiked
+                            ? 'assets/icons/like-fill.svg'
+                            : 'assets/icons/like-outline.svg',
                         height: 26,
                         width: 26,
                         colorFilter: _isLiked
-                            ? const ColorFilter.mode(Colors.red, BlendMode.srcIn)
-                            : const ColorFilter.mode(Colors.black87, BlendMode.srcIn),
+                            ? const ColorFilter.mode(
+                                Colors.red, BlendMode.srcIn)
+                            : const ColorFilter.mode(
+                                Colors.black87, BlendMode.srcIn),
                       ),
                     ),
-                    Text('$_likesCount Likes', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text('$_likesCount ${_likesCount == 1 ? "Likes" : "Likes"}',
+                        style: const TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(width: 16),
                     IconButton(
                       onPressed: _showCommentsSheet,
-                      icon: SvgPicture.asset('assets/icons/chat.svg', height: 26, width: 26, colorFilter: const ColorFilter.mode(Colors.black87, BlendMode.srcIn)),
+                      icon: SvgPicture.asset('assets/icons/chat.svg',
+                          height: 26,
+                          width: 26,
+                          colorFilter: const ColorFilter.mode(
+                              Colors.black87, BlendMode.srcIn)),
+                    ),
+                    const SizedBox(width: 8),
+                    // Menu ⋯
+                    PopupMenuButton<String>(
+                      icon: const Icon(Icons.more_horiz,
+                          size: 24, color: Colors.black87),
+                      onSelected: (value) async {
+                        if (value == 'delete') {
+                          if (_token != null) {
+                            try {
+                              await _postService.deletePost(
+                                  _token!, widget.post.id);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Postingan berhasil dihapus")));
+                              }
+                            } catch (e) {
+                              if (context.mounted)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content:
+                                            Text("Gagal hapus postingan: $e")));
+                            }
+                          }
+                        } else if (value == 'report') {
+                          if (_token != null) {
+                            try {
+                              await _postService.reportPost(
+                                  _token!, widget.post.id,
+                                  alasan: "Konten tidak pantas");
+                              if (context.mounted)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text(
+                                            "Postingan berhasil dilaporkan")));
+                            } catch (e) {
+                              if (context.mounted)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            "Gagal melaporkan postingan: $e")));
+                            }
+                          }
+                        }
+                      },
+                      itemBuilder: (context) {
+                        if (_userId == widget.post.userId.toString()) {
+                          return const [
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(children: [
+                                Icon(Icons.delete, color: Colors.red),
+                                SizedBox(width: 6),
+                                Text("Hapus",
+                                    style: TextStyle(color: Colors.red))
+                              ]),
+                            )
+                          ];
+                        } else {
+                          return const [
+                            PopupMenuItem(
+                              value: 'report',
+                              child: Row(children: [
+                                Icon(Icons.flag, color: Colors.red),
+                                SizedBox(width: 6),
+                                Text("Laporkan",
+                                    style: TextStyle(color: Colors.red))
+                              ]),
+                            )
+                          ];
+                        }
+                      },
                     ),
                   ],
                 ),
               ],
             ),
           ),
+
           // Caption
           if (post.caption.isNotEmpty)
             Padding(
@@ -411,7 +590,9 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 text: TextSpan(
                   style: GoogleFonts.inter(color: Colors.black, fontSize: 16),
                   children: [
-                    TextSpan(text: "${post.userName ?? "User"} ", style: const TextStyle(fontWeight: FontWeight.bold)),
+                    TextSpan(
+                        text: "${post.userName ?? "User"} ",
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     TextSpan(text: post.caption),
                   ],
                 ),
@@ -423,18 +604,23 @@ class _PostDetailPageState extends State<PostDetailPage> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               child: GestureDetector(
                 onTap: _showCommentsSheet,
-                child: Text("Lihat semua ${_comments.length} komentar", style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)),
+                child: Text("Lihat semua ${_comments.length} komentar",
+                    style: GoogleFonts.inter(color: Colors.grey, fontSize: 15)),
               ),
             ),
           const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: Text("Lainnya untuk dijelajahi", style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 17)),
+            child: Text("Lainnya untuk dijelajahi",
+                style: GoogleFonts.inter(
+                    fontWeight: FontWeight.bold, fontSize: 17)),
           ),
           if (_loadingPosts)
             const Center(child: CircularProgressIndicator())
           else if (_otherPosts.isEmpty)
-            const Padding(padding: EdgeInsets.all(8), child: Text("Belum ada postingan lain"))
+            const Padding(
+                padding: EdgeInsets.all(8),
+                child: Text("Belum ada postingan lain"))
           else
             MasonryGridView.count(
               crossAxisCount: 2,
@@ -447,7 +633,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                 final p = _otherPosts[index];
                 return GestureDetector(
                   onTap: () {
-                    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PostDetailPage(post: p)));
+                    Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => PostDetailPage(post: p)));
                   },
                   child: _PostCard(post: p),
                 );
@@ -486,23 +675,43 @@ class _PostCardState extends State<_PostCard> {
     });
   }
 
-  Future<void> _deletePost() async {
-    if (_token == null) return;
-    try {
-      await _postService.deletePost(_token!, widget.post.id);
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Postingan berhasil dihapus")));
-    } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal hapus postingan: $e")));
+ Future<void> _deletePost() async {
+  if (_token == null) return;
+
+  try {
+    await _postService.deletePost(_token!, widget.post.id);
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Postingan berhasil dihapus")),
+      );
+
+      // Auto-refresh list postingan setelah hapus
+      final homeState = context.findAncestorStateOfType<HomePageState>();
+      homeState?.reloadPosts(); // memanggil method reloadPosts() di HomePageState
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Gagal hapus postingan: $e")),
+      );
     }
   }
+}
+
 
   Future<void> _reportPost() async {
     if (_token == null) return;
     try {
-      await _postService.reportPost(_token!, widget.post.id, alasan: "Konten tidak pantas");
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Postingan berhasil dilaporkan")));
+      await _postService.reportPost(_token!, widget.post.id,
+          alasan: "Konten tidak pantas");
+      if (context.mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Postingan berhasil dilaporkan")));
     } catch (e) {
-      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Gagal melaporkan postingan: $e")));
+      if (context.mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Gagal melaporkan postingan: $e")));
     }
   }
 
@@ -521,9 +730,15 @@ class _PostCardState extends State<_PostCard> {
               width: double.infinity,
               loadingBuilder: (context, child, progress) {
                 if (progress == null) return child;
-                return Container(color: Colors.grey.shade200, height: 180, child: const Center(child: CupertinoActivityIndicator()));
+                return Container(
+                    color: Colors.grey.shade200,
+                    height: 180,
+                    child: const Center(child: CupertinoActivityIndicator()));
               },
-              errorBuilder: (context, _, __) => Container(color: Colors.grey.shade200, height: 180, child: const Icon(Icons.broken_image, color: Colors.grey)),
+              errorBuilder: (context, _, __) => Container(
+                  color: Colors.grey.shade200,
+                  height: 180,
+                  child: const Icon(Icons.broken_image, color: Colors.grey)),
             ),
           ),
           const SizedBox(height: 8),
@@ -532,17 +747,22 @@ class _PostCardState extends State<_PostCard> {
             children: [
               Expanded(
                 child: Text(
-                  widget.post.caption.isNotEmpty ? widget.post.caption : '(Tanpa judul)',
+                  widget.post.caption.isNotEmpty
+                      ? widget.post.caption
+                      : '(Tanpa judul)',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 15),
+                  style: GoogleFonts.inter(
+                      fontWeight: FontWeight.bold, fontSize: 15),
                 ),
               ),
               const SizedBox(width: 6),
               PopupMenuButton<String>(
                 padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                icon: const Icon(CupertinoIcons.ellipsis, size: 20, color: Colors.black),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                icon: const Icon(CupertinoIcons.ellipsis,
+                    size: 20, color: Colors.black),
                 onSelected: (value) async {
                   if (value == 'hapus') await _deletePost();
                   if (value == 'laporkan') await _reportPost();
@@ -552,14 +772,22 @@ class _PostCardState extends State<_PostCard> {
                     return const [
                       PopupMenuItem(
                         value: 'hapus',
-                        child: Row(children: [Icon(Icons.delete, color: Colors.red), SizedBox(width: 8), Text('Hapus', style: TextStyle(color: Colors.red))]),
+                        child: Row(children: [
+                          Icon(Icons.delete, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Hapus', style: TextStyle(color: Colors.red))
+                        ]),
                       )
                     ];
                   } else {
                     return const [
                       PopupMenuItem(
                         value: 'laporkan',
-                        child: Row(children: [Icon(Icons.flag, color: Colors.red), SizedBox(width: 8), Text('Laporkan', style: TextStyle(color: Colors.red))]),
+                        child: Row(children: [
+                          Icon(Icons.flag, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Laporkan', style: TextStyle(color: Colors.red))
+                        ]),
                       )
                     ];
                   }
