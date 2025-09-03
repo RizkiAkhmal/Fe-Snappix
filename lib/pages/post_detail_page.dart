@@ -675,11 +675,11 @@ class _PostCardState extends State<_PostCard> {
     });
   }
 
- Future<void> _deletePost() async {
-  if (_token == null) return;
+  Future<void> _deletePost() async {
+    if (_token == null) return;
 
-  try {
-    await _postService.deletePost(_token!, widget.post.id);
+    try {
+      await _postService.deletePost(_token!, widget.post.id);
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -690,7 +690,7 @@ class _PostCardState extends State<_PostCard> {
       final homeState = context.findAncestorStateOfType<HomePageState>();
       homeState?.reloadPosts(); // memanggil method reloadPosts() di HomePageState
     }
-  } catch (e) {
+    } catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Gagal hapus postingan: $e")),

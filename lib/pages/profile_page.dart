@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/profile_service.dart';
+import '../services/post_service.dart';
 import 'package:fe_snappix/config/api_config.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/post_model.dart';
@@ -12,8 +13,9 @@ import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class ProfilePage extends StatefulWidget {
   final ValueNotifier<int>? refreshTrigger;
+  final ValueNotifier<int>? homeRefreshTrigger;
 
-  const ProfilePage({super.key, this.refreshTrigger});
+  const ProfilePage({super.key, this.refreshTrigger, this.homeRefreshTrigger});
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -21,7 +23,9 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   late final ProfileService _service;
+  late final PostService _postService;
   String? _token;
+  String? _currentUserId;
   Map<String, dynamic>? _profile;
   List<Post> _myPosts = [];
   List<Album> _myAlbums = [];
@@ -33,6 +37,7 @@ class _ProfilePageState extends State<ProfilePage> {
   void initState() {
     super.initState();
     _service = ProfileService();
+    _postService = PostService(baseUrl: ApiConfig.baseUrl);
     _loadData();
 
     if (widget.refreshTrigger != null) {
@@ -54,10 +59,14 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
+    final userId = prefs.getString('user_id');
     if (token == null) return;
 
     if (!mounted) return;
-    setState(() => _token = token);
+    setState(() {
+      _token = token;
+      _currentUserId = userId;
+    });
 
     try {
       final profile = await _service.getProfile(token);
@@ -108,6 +117,33 @@ class _ProfilePageState extends State<ProfilePage> {
 
   String _buildImageUrl(String? path) {
     return ApiConfig.resolveMediaUrl(path);
+  }
+
+  Future<void> _deletePost(Post post) async {
+    if (_token == null) return;
+    
+    try {
+      await _postService.deletePost(_token!, post.id);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Postingan berhasil dihapus")),
+        );
+        // Hapus dari list lokal
+        setState(() {
+          _myPosts.removeWhere((p) => p.id == post.id);
+        });
+                 // Trigger refresh untuk HomePage juga
+         if (widget.homeRefreshTrigger != null) {
+           widget.homeRefreshTrigger!.value++;
+         }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal menghapus postingan: $e")),
+        );
+      }
+    }
   }
 
   @override
@@ -213,13 +249,38 @@ class _ProfilePageState extends State<ProfilePage> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                              child: Image.network(
-                                                _buildImageUrl(post.imageUrl),
-                                                fit: BoxFit.cover,
-                                              ),
+                                            Stack(
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  child: Image.network(
+                                                    _buildImageUrl(post.imageUrl),
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                ),
+                                                // Delete button untuk post milik user
+                                                if (_currentUserId == post.userId.toString())
+                                                  Positioned(
+                                                    top: 8,
+                                                    right: 8,
+                                                    child: GestureDetector(
+                                                      onTap: () => _deletePost(post),
+                                                      child: Container(
+                                                        padding: const EdgeInsets.all(4),
+                                                        decoration: BoxDecoration(
+                                                          color: Colors.black54,
+                                                          borderRadius: BorderRadius.circular(12),
+                                                        ),
+                                                        child: const Icon(
+                                                          Icons.delete,
+                                                          color: Colors.white,
+                                                          size: 16,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                             const SizedBox(height: 4),
                                             Text(

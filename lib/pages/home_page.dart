@@ -9,7 +9,10 @@ import 'package:fe_snappix/models/post_model.dart';
 import './post_detail_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final ValueNotifier<int>? refreshTrigger;
+  final ValueNotifier<int>? profileRefreshTrigger;
+
+  const HomePage({super.key, this.refreshTrigger, this.profileRefreshTrigger});
 
   @override
   HomePageState createState() => HomePageState();
@@ -23,10 +26,27 @@ class HomePageState extends State<HomePage> {
   bool _isLoadingPosts = false;
   List<Post> _posts = [];
 
+  VoidCallback? _refreshListener;
+
   @override
   void initState() {
     super.initState();
     _loadTokenAndUser();
+
+    if (widget.refreshTrigger != null) {
+      _refreshListener = () {
+        _loadTokenAndUser();
+      };
+      widget.refreshTrigger!.addListener(_refreshListener!);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (widget.refreshTrigger != null && _refreshListener != null) {
+      widget.refreshTrigger!.removeListener(_refreshListener!);
+    }
+    super.dispose();
   }
 
   Future<void> _loadTokenAndUser() async {
@@ -215,6 +235,11 @@ class _PostCard extends StatelessWidget {
                         homeState?.setState(() {
                           homeState._posts.removeWhere((p) => p.id == post.id);
                         });
+                        // Trigger refresh untuk ProfilePage juga
+                        final profileRefresh = homeState?.widget.profileRefreshTrigger;
+                        if (profileRefresh != null) {
+                          profileRefresh.value++;
+                        }
                       }
                     } catch (e) {
                       if (context.mounted) {

@@ -23,8 +23,9 @@ class _MainPageState extends State<MainPage> {
   // Tambah GlobalKey supaya bisa akses state HomePage
   final GlobalKey<HomePageState> _homeKey = GlobalKey<HomePageState>();
 
-  // Notifier untuk memicu refresh ProfilePage
+  // Notifier untuk memicu refresh ProfilePage dan HomePage
   final ValueNotifier<int> _profileRefresh = ValueNotifier<int>(0);
+  final ValueNotifier<int> _homeRefresh = ValueNotifier<int>(0);
 
   late final List<Widget> _pages;
 
@@ -35,10 +36,10 @@ class _MainPageState extends State<MainPage> {
   void initState() {
     super.initState();
     _pages = [
-      HomePage(key: _homeKey),
+      HomePage(key: _homeKey, refreshTrigger: _homeRefresh, profileRefreshTrigger: _profileRefresh),
       const SearchPage(),
       const SizedBox(), 
-      ProfilePage(refreshTrigger: _profileRefresh),
+      ProfilePage(refreshTrigger: _profileRefresh, homeRefreshTrigger: _homeRefresh),
     ];
   }
 
@@ -79,6 +80,7 @@ class _MainPageState extends State<MainPage> {
                       if (result == true) {
                         setState(() => _currentIndex = 3); // ke Profile
                         _profileRefresh.value++;
+                        _homeRefresh.value++; // refresh Home juga
                       }
                     },
                   ),
@@ -98,6 +100,7 @@ class _MainPageState extends State<MainPage> {
                       if (result == true) {
                         setState(() => _currentIndex = 3); // ke Profile
                         _profileRefresh.value++;
+                        _homeRefresh.value++; // refresh Home juga
                       }
                     },
                   ),
