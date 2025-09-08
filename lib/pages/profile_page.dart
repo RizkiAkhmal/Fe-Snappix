@@ -163,9 +163,12 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 16),
             CircleAvatar(
               radius: 50,
-              backgroundImage: NetworkImage(
-                _buildImageUrl(_profile?['avatar']),
-              ),
+              backgroundImage: (_profile?['avatar'] != null && (_profile!['avatar'].toString().isNotEmpty))
+                  ? NetworkImage(_buildImageUrl(_profile!['avatar']))
+                  : null,
+              child: (_profile?['avatar'] == null || _profile!['avatar'].toString().isEmpty)
+                  ? const Icon(Icons.person, size: 50)
+                  : null,
             ),
             const SizedBox(height: 12),
             Text(
@@ -178,14 +181,16 @@ class _ProfilePageState extends State<ProfilePage> {
                   '@${_profile!['username']}',
                   style: const TextStyle(fontSize: 14, color: Colors.grey),
                 ),
-              if (_profile?['email'] != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(
-                    _profile!['email'],
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-            ),
+            // Email disembunyikan demi privasi
+            if ((_profile?['bio'] ?? '').toString().trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                child: Text(
+                  _profile!['bio'].toString(),
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
             const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
