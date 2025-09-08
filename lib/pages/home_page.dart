@@ -122,19 +122,9 @@ class HomePageState extends State<HomePage> {
                       childCount: _posts.length,
                       itemBuilder: (context, index) {
                         final post = _posts[index];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => PostDetailPage(post: post),
-                              ),
-                            );
-                          },
-                          child: _PostCard(
-                            post: post,
-                            currentUserId: _currentUserId!,
-                          ),
+                        return _PostCard(
+                          post: post,
+                          currentUserId: _currentUserId!,
                         );
                       },
                     );
@@ -160,6 +150,7 @@ class _PostCard extends StatefulWidget {
 
 class _PostCardState extends State<_PostCard> {
   double _scale = 1.0;
+  String? _avatar;
 
   void _onTapDown(TapDownDetails details) {
     setState(() => _scale = 0.96); // mengecil halus saat ditekan
@@ -174,20 +165,58 @@ class _PostCardState extends State<_PostCard> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _maybeFetchAvatarDetail();
+  }
+
+  Future<void> _maybeFetchAvatarDetail() async {
+    if (widget.post.userAvatar != null && widget.post.userAvatar!.isNotEmpty) {
+      return;
+    }
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) return;
+    try {
+      final detail = await PostService(baseUrl: ApiConfig.baseUrl).getPost(token, widget.post.id);
+      if (!mounted) return;
+      setState(() {
+        _avatar = detail.userAvatar;
+      });
+    } catch (_) {}
+  }
+
+  @override
   Widget build(BuildContext context) {
     final post = widget.post;
     final currentUserId = widget.currentUserId;
+
+    // Lazy load avatar jika belum tersedia pada list
+    if (_avatar == null && (post.userAvatar == null || post.userAvatar!.isEmpty)) {
+      SharedPreferences.getInstance().then((prefs) async {
+        final token = prefs.getString('token');
+        if (!mounted || token == null) return;
+        try {
+          final detail = await PostService(baseUrl: ApiConfig.baseUrl).getPost(token, post.id);
+          if (!mounted) return;
+          setState(() {
+            _avatar = detail.userAvatar;
+          });
+        } catch (_) {}
+      });
+    }
 
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: (details) {
         _onTapUp(details);
-        // pindah ke detail_post
+        final effectiveAvatar = post.userAvatar ?? _avatar;
+        final enrichedPost = post.copyWith(userAvatar: effectiveAvatar);
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (context) =>
-                PostDetailPage(post: post), // ganti sesuai nama page detailmu
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 0),
+            pageBuilder: (_, __, ___) => PostDetailPage(post: enrichedPost),
           ),
         );
       },
@@ -236,6 +265,16 @@ class _PostCardState extends State<_PostCard> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundImage: ((post.userAvatar ?? _avatar) != null && (post.userAvatar ?? _avatar)!.isNotEmpty)
+                        ? NetworkImage(ApiConfig.resolveMediaUrl((post.userAvatar ?? _avatar)!))
+                        : null,
+                    child: ((post.userAvatar ?? _avatar) == null || (post.userAvatar ?? _avatar)!.isEmpty)
+                        ? const Icon(Icons.person, size: 16)
+                        : null,
+                  ),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       post.caption.isNotEmpty ? post.caption : '(Tanpa judul)',

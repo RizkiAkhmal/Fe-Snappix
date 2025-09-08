@@ -117,4 +117,20 @@ class ProfileService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
   }
+
+  /// Ambil user by username (untuk melengkapi avatar jika perlu)
+  Future<Map<String, dynamic>?> getUserByUsername(String token, String username) async {
+    final url = Uri.parse('$baseUrl/user/username/$username');
+    final res = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (res.statusCode == 200) {
+      final body = json.decode(res.body);
+      if (body is Map<String, dynamic>) return body;
+      return null;
+    }
+    return null;
+  }
 }

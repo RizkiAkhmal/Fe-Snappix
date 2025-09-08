@@ -8,6 +8,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:fe_snappix/models/post_model.dart';
 import 'package:fe_snappix/services/post_service.dart';
+import 'package:fe_snappix/services/profile_service.dart';
 import 'package:fe_snappix/config/api_config.dart';
 
 class PostDetailPage extends StatefulWidget {
@@ -21,6 +22,7 @@ class PostDetailPage extends StatefulWidget {
 
 class _PostDetailPageState extends State<PostDetailPage> {
   late final PostService _postService = PostService(baseUrl: ApiConfig.baseUrl);
+  final _profileService = ProfileService();
 
   String? _token;
   String? _userId;
@@ -28,16 +30,19 @@ class _PostDetailPageState extends State<PostDetailPage> {
   int _likesCount = 0;
   bool _loading = false;
 
+  late Post _post;
+
   List<dynamic> _comments = [];
   final TextEditingController _commentController = TextEditingController();
   String? _editingCommentId;
 
   List<Post> _otherPosts = [];
-  bool _loadingPosts = false;
+  bool _loadingPosts = true; // mulai dengan loading agar tidak tampil "kosong" dahulu
 
   @override
   void initState() {
     super.initState();
+    _post = widget.post;
     _loadTokenAndUserId();
   }
 
@@ -45,60 +50,103 @@ class _PostDetailPageState extends State<PostDetailPage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
     final userId = prefs.getString("user_id");
-    setState(() {
-      _token = token;
-      _userId = userId;
-    });
+    if (mounted) {
+      setState(() {
+        _token = token;
+        _userId = userId;
+      });
+    }
 
     if (token != null) {
       try {
         final result =
             await _postService.checkLikeStatus(token, widget.post.id);
-        setState(() {
-          _isLiked = result['is_liked'] ?? false;
-          _likesCount = result['likes_count'] ?? 0;
-        });
+        if (mounted) {
+          setState(() {
+            _isLiked = result['is_liked'] ?? false;
+            _likesCount = result['likes_count'] ?? 0;
+          });
+        }
+        // Fetch full post detail to get ensured user avatar
+        try {
+          final detail = await _postService.getPost(token, widget.post.id);
+          if (mounted) {
+            setState(() {
+              _post = detail.copyWith(
+                userAvatar: detail.userAvatar ?? _post.userAvatar,
+                userUsername: detail.userUsername ?? _post.userUsername,
+              );
+            });
+          }
+        } catch (_) {}
+
+        // If avatar still missing but username known, fetch from user profile
+        if ((_post.userAvatar == null || _post.userAvatar!.isEmpty) &&
+            (_post.userUsername != null && _post.userUsername!.isNotEmpty)) {
+          try {
+            final user = await _profileService.getUserByUsername(token, _post.userUsername!);
+            if (user != null && mounted) {
+              final dynamic rawAvatar = user['avatar'] ?? user['avatar_url'] ?? user['photo'] ?? user['profile_photo'] ?? user['profile_photo_path'];
+              if (rawAvatar != null && rawAvatar.toString().isNotEmpty) {
+                if (mounted) {
+                  setState(() {
+                    _post = _post.copyWith(userAvatar: rawAvatar.toString());
+                  });
+                }
+              }
+            }
+          } catch (_) {}
+        }
         await _fetchComments();
         await _fetchOtherPosts();
       } catch (e) {
         print("Error init: $e");
       }
     }
+    else {
+      if (mounted) setState(() => _loadingPosts = false);
+    }
   }
 
   Future<void> _fetchOtherPosts() async {
     if (_token == null) return;
-    setState(() => _loadingPosts = true);
+    if (mounted) setState(() => _loadingPosts = true);
     try {
       final posts = await _postService.getPosts(_token!);
-      setState(() {
-        _otherPosts = posts.where((p) => p.id != widget.post.id).toList();
-      });
+      if (mounted) {
+        setState(() {
+          _otherPosts = posts.where((p) => p.id != widget.post.id).toList();
+        });
+      }
     } finally {
-      setState(() => _loadingPosts = false);
+      if (mounted) setState(() => _loadingPosts = false);
     }
   }
 
   Future<void> _toggleLike() async {
     if (_token == null) return;
-    setState(() => _loading = true);
+    if (mounted) setState(() => _loading = true);
 
     try {
       if (_isLiked) {
         final result = await _postService.unlikePost(_token!, widget.post.id);
-        setState(() {
-          _isLiked = false;
-          _likesCount = result['likes_count'] ?? _likesCount;
-        });
+        if (mounted) {
+          setState(() {
+            _isLiked = false;
+            _likesCount = result['likes_count'] ?? _likesCount;
+          });
+        }
       } else {
         final result = await _postService.likePost(_token!, widget.post.id);
-        setState(() {
-          _isLiked = true;
-          _likesCount = result['likes_count'] ?? _likesCount;
-        });
+        if (mounted) {
+          setState(() {
+            _isLiked = true;
+            _likesCount = result['likes_count'] ?? _likesCount;
+          });
+        }
       }
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -106,7 +154,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     if (_token == null) return;
     try {
       final data = await _postService.getComments(_token!, widget.post.id);
-      setState(() => _comments = data['data'] ?? []);
+      if (mounted) setState(() => _comments = data['data'] ?? []);
     } catch (e) {
       print("Error fetch comments: $e");
     }
@@ -222,8 +270,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                               final userName = user != null
                                   ? user['name'] ?? "User"
                                   : "Anonim";
-                              final avatarUrl = user?['avatar'] ??
-                                  "https://i.pravatar.cc/150?img=${index + 10}";
+                              final dynamic rawAvatar = user?['avatar'] ??
+                                  user?['avatar_url'] ??
+                                  user?['photo'] ??
+                                  user?['profile_photo'] ??
+                                  user?['profile_photo_path'];
+                              final String? avatarUrl = (rawAvatar == null || rawAvatar.toString().isEmpty)
+                                  ? null
+                                  : ApiConfig.resolveMediaUrl(rawAvatar.toString());
 
                               return Container(
                                 margin: const EdgeInsets.symmetric(
@@ -244,8 +298,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                                   children: [
                                     CircleAvatar(
                                         radius: 20,
-                                        backgroundImage:
-                                            NetworkImage(avatarUrl),
+                                        backgroundImage: avatarUrl != null
+                                            ? NetworkImage(avatarUrl)
+                                            : null,
+                                        child: avatarUrl == null
+                                            ? const Icon(Icons.person)
+                                            : null,
                                         backgroundColor: Colors.grey.shade300),
                                     const SizedBox(width: 10),
                                     Expanded(
@@ -317,8 +375,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       children: [
                         CircleAvatar(
                             radius: 18,
-                            backgroundImage: NetworkImage(
-                                "https://i.pravatar.cc/150?img=10"),
+                            backgroundImage: (widget.post.userAvatar != null && widget.post.userAvatar!.isNotEmpty)
+                                ? NetworkImage(ApiConfig.resolveMediaUrl(widget.post.userAvatar!))
+                                : null,
+                            child: (widget.post.userAvatar == null || widget.post.userAvatar!.isEmpty)
+                                ? const Icon(Icons.person, size: 18)
+                                : null,
                             backgroundColor: Colors.grey.shade400),
                         const SizedBox(width: 8),
                         Expanded(
@@ -405,7 +467,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final post = widget.post;
+    final post = _post;
 
     return Scaffold(
       body: ListView(
@@ -464,8 +526,12 @@ class _PostDetailPageState extends State<PostDetailPage> {
               children: [
                 CircleAvatar(
                     radius: 16,
-                    backgroundImage:
-                        const NetworkImage("https://i.pravatar.cc/150?img=5"),
+                    backgroundImage: (post.userAvatar != null && post.userAvatar!.isNotEmpty)
+                        ? NetworkImage(ApiConfig.resolveMediaUrl(post.userAvatar!))
+                        : null,
+                    child: (post.userAvatar == null || post.userAvatar!.isEmpty)
+                        ? const Icon(Icons.person, size: 16)
+                        : null,
                     backgroundColor: Colors.grey.shade300),
                 const SizedBox(width: 8),
                 Text(post.userName ?? "User",
@@ -476,17 +542,10 @@ class _PostDetailPageState extends State<PostDetailPage> {
                   children: [
                     IconButton(
                       onPressed: _loading ? null : _toggleLike,
-                      icon: SvgPicture.asset(
-                        _isLiked
-                            ? 'assets/icons/like-fill.svg'
-                            : 'assets/icons/like-outline.svg',
-                        height: 26,
-                        width: 26,
-                        colorFilter: _isLiked
-                            ? const ColorFilter.mode(
-                                Colors.red, BlendMode.srcIn)
-                            : const ColorFilter.mode(
-                                Colors.black87, BlendMode.srcIn),
+                      icon: Icon(
+                        _isLiked ? Icons.favorite : Icons.favorite_border,
+                        color: _isLiked ? Colors.red : Colors.black87,
+                        size: 26,
                       ),
                     ),
                     Text('$_likesCount ${_likesCount == 1 ? "Likes" : "Likes"}',
@@ -495,11 +554,11 @@ class _PostDetailPageState extends State<PostDetailPage> {
                     const SizedBox(width: 16),
                     IconButton(
                       onPressed: _showCommentsSheet,
-                      icon: SvgPicture.asset('assets/icons/chat.svg',
-                          height: 26,
-                          width: 26,
-                          colorFilter: const ColorFilter.mode(
-                              Colors.black87, BlendMode.srcIn)),
+                      icon: const Icon(
+                        Icons.chat_bubble_outline,
+                        color: Colors.black87,
+                        size: 26,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     // Menu ⋯
@@ -745,6 +804,16 @@ class _PostCardState extends State<_PostCard> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              CircleAvatar(
+                radius: 12,
+                backgroundImage: (widget.post.userAvatar != null && widget.post.userAvatar!.isNotEmpty)
+                    ? NetworkImage(ApiConfig.resolveMediaUrl(widget.post.userAvatar!))
+                    : null,
+                child: (widget.post.userAvatar == null || widget.post.userAvatar!.isEmpty)
+                    ? const Icon(Icons.person, size: 16)
+                    : null,
+              ),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   widget.post.caption.isNotEmpty

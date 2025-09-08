@@ -60,7 +60,19 @@ class _ProfilePageState extends State<ProfilePage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     final userId = prefs.getString('user_id');
-    if (token == null) return;
+    if (token == null) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+        // Arahkan ke login bila token hilang/invalid
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      }
+      return;
+    }
 
     if (!mounted) return;
     setState(() {
