@@ -7,6 +7,7 @@ import 'package:fe_snappix/services/post_service.dart';
 import 'package:fe_snappix/config/api_config.dart';
 import 'package:fe_snappix/models/post_model.dart';
 import './post_detail_page.dart';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 class HomePage extends StatefulWidget {
   final ValueNotifier<int>? refreshTrigger;
@@ -122,18 +123,20 @@ class HomePageState extends State<HomePage> {
                       childCount: _posts.length,
                       itemBuilder: (context, index) {
                         final post = _posts[index];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => PostDetailPage(post: post),
+                        return AnimationConfiguration.staggeredGrid(
+                          position: index,
+                          duration: const Duration(milliseconds: 500),
+                          columnCount: crossAxisCount,
+                          child: SlideAnimation(
+                            verticalOffset: 50.0, // muncul dari bawah
+                            curve: Curves.easeOutCubic, // smooth banget
+                            child: FadeInAnimation(
+                              curve: Curves.easeOut, // fade pelan
+                              child: _PostCard(
+                                post: post,
+                                currentUserId: _currentUserId!,
                               ),
-                            );
-                          },
-                          child: _PostCard(
-                            post: post,
-                            currentUserId: _currentUserId!,
+                            ),
                           ),
                         );
                       },
@@ -151,6 +154,7 @@ class HomePageState extends State<HomePage> {
 class _PostCard extends StatefulWidget {
   final Post post;
   final String currentUserId;
+  
 
   const _PostCard({required this.post, required this.currentUserId});
 
@@ -263,56 +267,282 @@ class _PostCardState extends State<_PostCard> {
                           .then((prefs) => prefs.getString("token"));
                       if (token == null) return;
 
+                      Future<bool?> showConfirmBottomSheet({
+                        required String title,
+                        required String message,
+                        required String confirmText,
+                        required Color confirmColor,
+                      }) {
+                        return showModalBottomSheet<bool>(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (context) {
+                            return SafeArea(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    // drag handle
+                                    Container(
+                                      width: 40,
+                                      height: 5,
+                                      margin: const EdgeInsets.only(bottom: 20),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade400,
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+
+                                    // judul
+                                    Text(
+                                      title,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+
+                                    // pesan
+                                    Text(
+                                      message,
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w400,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+
+                                    // tombol aksi utama
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: confirmColor,
+                                        minimumSize: const Size.fromHeight(50),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      child: Text(
+                                        confirmText,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // tombol batal
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: Text(
+                                        "Batal",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }
+
+                      Future<void> showResponseBottomSheet(
+                        BuildContext context, {
+                        required String title,
+                        required String message,
+                        required Color color,
+                        IconData icon = Icons.info,
+                      }) {
+                        return showModalBottomSheet(
+                          context: context,
+                          backgroundColor: Colors.transparent,
+                          isScrollControlled: false,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (context) {
+                            return SafeArea(
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.12),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, -3),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Jika ingin lebih clean, bisa hapus drag handle juga
+                                    Container(
+                                      width: 40,
+                                      height: 4,
+                                      margin: const EdgeInsets.only(bottom: 16),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                    // Content row: icon + text (tidak ada tombol X)
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        CircleAvatar(
+                                          radius: 20,
+                                          backgroundColor:
+                                              color.withOpacity(0.15),
+                                          child: Icon(icon,
+                                              color: color, size: 24),
+                                        ),
+                                        const SizedBox(width: 14),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                title,
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 16,
+                                                  color: color,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 6),
+                                              Text(
+                                                message,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.black87,
+                                                  height: 1.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      }
+
                       if (value == 'hapus') {
-                        try {
-                          await PostService(baseUrl: ApiConfig.baseUrl)
-                              .deletePost(token, post.id);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text("Postingan berhasil dihapus")),
-                            );
-                            final homeState = context
-                                .findAncestorStateOfType<HomePageState>();
-                            homeState?.setState(() {
-                              homeState._posts
-                                  .removeWhere((p) => p.id == post.id);
-                            });
-                            // Trigger refresh untuk ProfilePage juga
-                            final profileRefresh =
-                                homeState?.widget.profileRefreshTrigger;
-                            if (profileRefresh != null) {
-                              profileRefresh.value++;
+                        final confirm = await showConfirmBottomSheet(
+                          title: "Hapus Postingan",
+                          message:
+                              "Apakah kamu yakin ingin menghapus postingan ini? Aksi ini tidak bisa dibatalkan.",
+                          confirmText: "Hapus",
+                          confirmColor: Colors.red,
+                        );
+
+                        if (confirm == true) {
+                          try {
+                            await PostService(baseUrl: ApiConfig.baseUrl)
+                                .deletePost(token, post.id);
+
+                            if (context.mounted) {
+                              await showResponseBottomSheet(
+                                context,
+                                title: "Berhasil",
+                                message: "Postingan berhasil dihapus",
+                                color: Colors.green,
+                                icon: Icons.check_circle,
+                              );
+
+                              final homeState = context
+                                  .findAncestorStateOfType<HomePageState>();
+                              homeState?.setState(() {
+                                homeState._posts
+                                    .removeWhere((p) => p.id == post.id);
+                              });
+
+                              final profileRefresh =
+                                  homeState?.widget.profileRefreshTrigger;
+                              if (profileRefresh != null)
+                                profileRefresh.value++;
                             }
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content:
-                                      Text("Gagal menghapus postingan: $e")),
-                            );
+                          } catch (e) {
+                            if (context.mounted) {
+                              await showResponseBottomSheet(
+                                context,
+                                title: "Gagal",
+                                message: "Gagal menghapus postingan: $e",
+                                color: Colors.red,
+                                icon: Icons.error,
+                              );
+                            }
                           }
                         }
                       } else if (value == 'laporkan') {
-                        try {
-                          await PostService(baseUrl: ApiConfig.baseUrl)
-                              .reportPost(token, post.id,
-                                  alasan: "Konten tidak pantas");
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content:
-                                      Text("Postingan berhasil dilaporkan")),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content:
-                                      Text("Gagal melaporkan postingan: $e")),
-                            );
+                        final confirm = await showConfirmBottomSheet(
+                          title: "Laporkan Postingan",
+                          message:
+                              "Apakah kamu yakin ingin melaporkan postingan ini sebagai konten tidak pantas?",
+                          confirmText: "Laporkan",
+                          confirmColor: const Color.fromARGB(255, 255, 0, 0),
+                        );
+
+                        if (confirm == true) {
+                          try {
+                            await PostService(baseUrl: ApiConfig.baseUrl)
+                                .reportPost(token, post.id,
+                                    alasan: "Konten tidak pantas");
+
+                            if (context.mounted) {
+                              await showResponseBottomSheet(
+                                context,
+                                title: "Berhasil",
+                                message: "Postingan berhasil dilaporkan",
+                                color: Colors.blue,
+                                icon: Icons.flag,
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              await showResponseBottomSheet(
+                                context,
+                                title: "Gagal",
+                                message: "Gagal melaporkan postingan: $e",
+                                color: Colors.red,
+                                icon: Icons.error,
+                              );
+                            }
                           }
                         }
                       }
@@ -321,13 +551,38 @@ class _PostCardState extends State<_PostCard> {
                       if (currentUserId == post.userId.toString())
                         PopupMenuItem(
                           value: 'hapus',
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           child: Row(
-                            children: const [
-                              Icon(Icons.delete, color: Colors.red),
-                              SizedBox(width: 8),
-                              Text(
-                                'Hapus',
-                                style: TextStyle(color: Colors.red),
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.red.withOpacity(0.15),
+                                      Colors.red.withOpacity(0.05)
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.delete,
+                                    color: Colors.red, size: 18),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Hapus Postingan',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.red.shade600,
+                                    letterSpacing: 0.1,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -335,21 +590,44 @@ class _PostCardState extends State<_PostCard> {
                       else
                         PopupMenuItem(
                           value: 'laporkan',
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
                           child: Row(
-                            children: const [
-                              Icon(Icons.flag,
-                                  color: Color.fromARGB(255, 255, 0, 0)),
-                              SizedBox(width: 8),
-                              Text(
-                                'Laporkan',
-                                style: TextStyle(
-                                    color: Color.fromARGB(255, 255, 0, 0)),
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.orange.withOpacity(0.15),
+                                      Colors.orange.withOpacity(0.05)
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.flag,
+                                    color: Colors.deepOrange, size: 18),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Laporkan',
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.deepOrange.shade600,
+                                    letterSpacing: 0.1,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
                         ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ],
