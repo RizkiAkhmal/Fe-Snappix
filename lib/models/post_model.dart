@@ -5,7 +5,9 @@ class Post {
   final int? albumId;
   final String? albumName; // nama album opsional
   final String? userName; // nama user opsional
+  final String? userUsername; // username opsional
   final int? userId; // ID user yang membuat post
+  final String? userAvatar; // avatar user opsional
   final String createdAt;
 
   Post({
@@ -15,7 +17,9 @@ class Post {
     this.albumId,
     this.albumName,
     this.userName,
+    this.userUsername,
     this.userId,
+    this.userAvatar,
     required this.createdAt,
   });
 
@@ -66,17 +70,50 @@ class Post {
 
     // Ambil nama user dari relasi
     String? userName;
+    String? userUsername;
     int? userId;
+    String? userAvatar;
     final dynamic userObj = json['user'];
     if (userObj is Map<String, dynamic>) {
       final s = _asString(userObj['name']);
       userName = s.isEmpty ? null : s;
+      final uu = _asString(userObj['username'], fallback: '');
+      userUsername = uu.isEmpty ? null : uu;
       userId = _asInt(userObj['id']);
+      final avatar = _asString(
+        userObj['avatar'] ??
+            userObj['avatar_url'] ??
+            userObj['photo'] ??
+            userObj['profile_photo'] ??
+            userObj['profile_photo_path'],
+        fallback: '',
+      );
+      userAvatar = avatar.isEmpty ? null : avatar;
     }
 
     // Jika tidak ada user object, coba ambil langsung dari json
     if (userId == null) {
       userId = _asInt(json['user_id'] ?? json['userId'] ?? json['id_user']);
+    }
+
+    // Fallback lain untuk avatar di level root
+    if (userAvatar == null || userAvatar.isEmpty) {
+      final rootAvatar = _asString(
+        json['user_avatar'] ??
+            json['avatar_url'] ??
+            json['avatar'] ??
+            json['photo'] ??
+            json['profile_photo'] ??
+            json['profile_photo_path'],
+        fallback: '',
+      );
+      if (rootAvatar.isNotEmpty) userAvatar = rootAvatar;
+    }
+
+    // Fallback username di root
+    if (userUsername == null || userUsername.isEmpty) {
+      final uu = _asString(json['username'], fallback: '');
+      if (uu.isNotEmpty) userUsername = uu;
     }
 
     final String createdAt =
@@ -89,7 +126,9 @@ class Post {
       albumId: albumId,
       albumName: albumName,
       userName: userName,
+      userUsername: userUsername,
       userId: userId,
+      userAvatar: userAvatar,
       createdAt: createdAt,
     );
   }
@@ -100,6 +139,8 @@ class Post {
       'image_url': imageUrl,
       'album_id': albumId,
       'user_id': userId,
+      'user_avatar': userAvatar,
+      'username': userUsername,
     };
   }
 
@@ -110,6 +151,8 @@ class Post {
     int? albumId,
     String? albumName,
     String? userName,
+    String? userUsername,
+    String? userAvatar,
     int? userId,
     String? createdAt,
   }) {
@@ -120,7 +163,9 @@ class Post {
       albumId: albumId ?? this.albumId,
       albumName: albumName ?? this.albumName,
       userName: userName ?? this.userName,
+      userUsername: userUsername ?? this.userUsername,
       userId: userId ?? this.userId,
+      userAvatar: userAvatar ?? this.userAvatar,
       createdAt: createdAt ?? this.createdAt,
     );
   }

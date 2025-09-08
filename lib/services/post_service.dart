@@ -22,9 +22,19 @@ class PostService {
     });
 
     if (response.statusCode == 200) {
-      final Map<String, dynamic> decoded = json.decode(response.body);
-      final List data = decoded['data'];
-      return data.map((json) => Post.fromJson(json)).toList();
+      final decoded = json.decode(response.body);
+      List items = const [];
+      if (decoded is List) {
+        items = decoded;
+      } else if (decoded is Map<String, dynamic>) {
+        final dynamic data = decoded['data'];
+        if (data is List) {
+          items = data;
+        } else if (data is Map<String, dynamic> && data['data'] is List) {
+          items = data['data'];
+        }
+      }
+      return items.map((e) => Post.fromJson(e as Map<String, dynamic>)).toList();
     } else {
       throw Exception('Gagal mengambil postingan: ${response.body}');
     }
@@ -39,7 +49,14 @@ class PostService {
     });
 
     if (response.statusCode == 200) {
-      return Post.fromJson(json.decode(response.body));
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic> && decoded['data'] is Map<String, dynamic>) {
+        return Post.fromJson(decoded['data']);
+      }
+      if (decoded is Map<String, dynamic>) {
+        return Post.fromJson(decoded);
+      }
+      throw Exception('Format response tidak dikenali untuk detail post');
     } else {
       throw Exception('Gagal mengambil detail postingan: ${response.body}');
     }
