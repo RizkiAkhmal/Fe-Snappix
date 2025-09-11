@@ -190,8 +190,7 @@ class PostService {
 
   // Ambil postingan berdasarkan album
   Future<List<Post>> getPostsByAlbum(String token, int albumId) async {
-    // Adjusted to use user posts filtered by album since backend lacks /albums/{id}/posts route
-    final uri = Uri.parse('$baseUrl/user/my-posts');
+    final uri = Uri.parse('$baseUrl/albums/$albumId/posts');
     final response = await http.get(uri, headers: {
       'Authorization': 'Bearer $token',
       'Accept': 'application/json',
@@ -200,18 +199,12 @@ class PostService {
     if (response.statusCode == 200) {
       final Map<String, dynamic> decoded = json.decode(response.body);
       final List data = decoded['data'] ?? [];
-      // Filter posts by albumId locally
-      final filtered = data.where((post) {
-        final album = post['album'];
-        if (album == null) return false;
-        final id = album['id'] ?? album['album_id'];
-        return id == albumId;
-      }).toList();
-      return filtered.map((json) => Post.fromJson(json)).toList();
+      return data.map((json) => Post.fromJson(json)).toList();
     } else {
       throw Exception('Gagal mengambil postingan album: ${response.body}');
     }
   }
+
 
   // Ambil postingan milik user tertentu
   Future<List<Post>> getPostsByUser(String token, int userId) async {

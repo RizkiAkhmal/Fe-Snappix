@@ -71,56 +71,52 @@ class _UserProfilePageState extends State<UserProfilePage> with SingleTickerProv
       List<Album> albums = [];
       
       try {
-        // Method 1: Try getUserAlbums from PostService
-        final albumMaps = await _postService.getUserAlbums(token);
-        print('getUserAlbums returned: $albumMaps');
-        albums = albumMaps.map((map) => Album(
-          id: map['id'],
-          namaAlbum: map['name'] ?? '',
-          deskripsi: '',
-          coverUrl: null,
-        )).toList();
-      } catch (e) {
-        print('getUserAlbums failed: $e');
+        // Method 1: Skip getUserAlbums from PostService to avoid loading logged-in user's albums
+        // final albumMaps = await _postService.getUserAlbums(token);
+        // print('getUserAlbums returned: $albumMaps');
+        // albums = albumMaps.map((map) => Album(
+        //   id: map['id'],
+        //   namaAlbum: map['name'] ?? '',
+        //   deskripsi: '',
+        //   coverUrl: null,
+        // )).toList();
         
-        try {
-          // Method 2: Try getMyAlbums from ProfileService
-          final albumData = await _profileService.getMyAlbums(token);
-          print('getMyAlbums returned: $albumData');
-          albums = albumData.map((item) {
-            if (item is Map<String, dynamic>) {
-              return Album(
-                id: item['id'] ?? item['album_id'],
-                namaAlbum: item['nama_album'] ?? item['name'] ?? item['title'] ?? '',
-                deskripsi: item['deskripsi'] ?? item['description'] ?? '',
-                coverUrl: item['cover_url'] ?? item['cover'] ?? item['image'],
-              );
-            }
-            return Album(namaAlbum: '', deskripsi: '');
-          }).toList();
-        } catch (e2) {
-          print('getMyAlbums failed: $e2');
-          
-          // Method 3: Extract albums from posts
-          final albumSet = <int, Map<String, dynamic>>{};
-          for (final post in posts) {
-            if (post.albumId != null && post.albumName != null) {
-              albumSet[post.albumId!] = {
-                'id': post.albumId,
-                'nama_album': post.albumName,
-                'deskripsi': '',
-                'cover_url': null,
-              };
-            }
+        // Directly use Method 2: getAlbumsByUserId from ProfileService with widget.userId
+        final albumData = await _profileService.getAlbumsByUserId(token, widget.userId);
+        print('getAlbumsByUserId returned: $albumData');
+        albums = albumData.map((item) {
+          if (item is Map<String, dynamic>) {
+            return Album(
+              id: item['id'] ?? item['album_id'],
+              namaAlbum: item['nama_album'] ?? item['name'] ?? item['title'] ?? '',
+              deskripsi: item['deskripsi'] ?? item['description'] ?? '',
+              coverUrl: item['cover_url'] ?? item['cover'] ?? item['image'],
+            );
           }
-          albums = albumSet.values.map((albumData) => Album(
-            id: albumData['id'],
-            namaAlbum: albumData['nama_album'] ?? '',
-            deskripsi: albumData['deskripsi'] ?? '',
-            coverUrl: albumData['cover_url'],
-          )).toList();
-          print('Extracted ${albums.length} albums from posts');
+          return Album(namaAlbum: '', deskripsi: '');
+        }).toList();
+      } catch (e2) {
+        print('getAlbumsByUserId failed: $e2');
+        
+        // Method 3: Extract albums from posts
+        final albumSet = <int, Map<String, dynamic>>{};
+        for (final post in posts) {
+          if (post.albumId != null && post.albumName != null) {
+            albumSet[post.albumId!] = {
+              'id': post.albumId,
+              'nama_album': post.albumName,
+              'deskripsi': '',
+              'cover_url': null,
+            };
+          }
         }
+        albums = albumSet.values.map((albumData) => Album(
+          id: albumData['id'],
+          namaAlbum: albumData['nama_album'] ?? '',
+          deskripsi: albumData['deskripsi'] ?? '',
+          coverUrl: albumData['cover_url'],
+        )).toList();
+        print('Extracted ${albums.length} albums from posts');
       }
       
       if (!mounted) return;

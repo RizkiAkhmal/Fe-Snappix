@@ -62,6 +62,23 @@ class ProfileService {
     }
   }
 
+  /// Ambil album user by userId
+  Future<List<dynamic>> getAlbumsByUserId(String token, int userId) async {
+    final url = Uri.parse('$baseUrl/user/$userId/albums');
+    final res = await http.get(url, headers: {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    });
+
+    if (res.statusCode == 200) {
+      final body = json.decode(res.body);
+      return body['data'] ?? [];
+    } else {
+      throw Exception('Gagal load album: ${res.body}');
+    }
+  }
+
+
   /// Update profil
   Future<void> updateProfile(String token,
       {String? username, String? name, String? email, String? bio}) async {
