@@ -55,11 +55,30 @@ class AlbumService {
     }
   }
 
-  Future<void> deleteAlbum(int id) async {
-    final response = await http.delete(Uri.parse('$_albumsUrl/$id'), headers: _headers);
+ Future<void> deleteAlbum(int id) async {
+  final response = await http.delete(Uri.parse('$_albumsUrl/$id'), headers: _headers);
 
-    if (response.statusCode != 204) {
-      throw Exception('Failed to delete album');
+  if (response.statusCode == 200 || response.statusCode == 204) {
+    // sukses
+    return;
+  } else {
+    final msg = response.body.isNotEmpty ? response.body : 'Unknown error';
+    throw Exception('Failed to delete album: $msg');
+  }
+}
+
+  Future<List<Album>> getAlbumsByUser(int userId) async {
+    final response = await http.get(
+      Uri.parse('$_albumsUrl/user/$userId'), 
+      headers: _headers
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = json.decode(response.body);
+      final List<dynamic> data = decoded is List ? decoded : (decoded['data'] ?? []);
+      return data.map((json) => Album.fromJson(json as Map<String, dynamic>)).toList();
+    } else {
+      throw Exception('Failed to load user albums');
     }
   }
 }

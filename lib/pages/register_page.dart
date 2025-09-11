@@ -16,14 +16,100 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isLoading = false;
   String? _errorMessage;
+  bool _isPasswordVisible = false;
+
+  // Method untuk menampilkan alert dialog
+  void _showAlert(String title, String message, {bool isSuccess = false}) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle : Icons.error,
+                color: isSuccess ? Colors.green : Colors.red,
+                size: 24,
+              ),
+              SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isSuccess ? Colors.green : Colors.red,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        );
+      },
+    );
+  }
+
+  // Validasi input sebelum register
+  bool _validateInputs() {
+    final username = _usernameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (username.isEmpty) {
+      _showAlert('Input Tidak Lengkap', 'Username tidak boleh kosong.');
+      return false;
+    }
+
+    if (username.length < 3) {
+      _showAlert('Username Terlalu Pendek', 'Username minimal 3 karakter.');
+      return false;
+    }
+
+    if (email.isEmpty) {
+      _showAlert('Input Tidak Lengkap', 'Alamat email tidak boleh kosong.');
+      return false;
+    }
+
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      _showAlert('Format Email Salah', 'Mohon masukkan alamat email yang valid.');
+      return false;
+    }
+
+    if (password.isEmpty) {
+      _showAlert('Input Tidak Lengkap', 'Password tidak boleh kosong.');
+      return false;
+    }
+
+    if (password.length < 6) {
+      _showAlert('Password Terlalu Pendek', 'Password minimal 6 karakter.');
+      return false;
+    }
+
+    return true;
+  }
 
   Future<void> _handleRegister() async {
-    if (_usernameController.text.trim().isEmpty ||
-        _emailController.text.trim().isEmpty ||
-        _passwordController.text.trim().isEmpty) {
-      setState(() {
-        _errorMessage = "⚠️ Semua field wajib diisi";
-      });
+    // Validasi input terlebih dahulu
+    if (!_validateInputs()) {
       return;
     }
 
@@ -40,20 +126,37 @@ class _RegisterPageState extends State<RegisterPage> {
       );
 
       if (response['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text("✅ Pendaftaran berhasil! Silakan login.")),
+        // Tampilkan alert sukses
+        _showAlert(
+          'Akun Sudah Dibuat!', 
+          'Pendaftaran berhasil! Silakan login dengan akun baru Anda.',
+          isSuccess: true
         );
+
+        // Tunggu sebentar untuk user melihat alert, kemudian navigate
+        await Future.delayed(Duration(milliseconds: 1500));
+        
         Navigator.pushReplacementNamed(context, '/login');
       } else {
+        final errorMsg = response['message'] ?? "Pendaftaran gagal";
         setState(() {
-          _errorMessage = response['message'] ?? "Pendaftaran gagal";
+          _errorMessage = errorMsg;
         });
+        
+        // Tampilkan alert error
+        _showAlert('Pendaftaran Gagal', errorMsg);
       }
     } catch (e) {
+      final errorMsg = "Terjadi kesalahan: $e";
       setState(() {
-        _errorMessage = "Terjadi kesalahan: $e";
+        _errorMessage = errorMsg;
       });
+      
+      // Tampilkan alert untuk error koneksi atau server
+      _showAlert(
+        'Kesalahan Koneksi', 
+        'Tidak dapat terhubung ke server. Periksa koneksi internet Anda dan coba lagi.'
+      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -61,7 +164,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  InputDecoration _inputDecoration(String label) {
+  InputDecoration _inputDecoration(String label, {bool isPassword = false}) {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: Colors.red),
@@ -73,6 +176,28 @@ class _RegisterPageState extends State<RegisterPage> {
         borderSide: BorderSide(color: Colors.red),
         borderRadius: BorderRadius.circular(8),
       ),
+      errorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      suffixIcon: isPassword
+          ? IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                color: Colors.red,
+                size: 22,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isPasswordVisible = !_isPasswordVisible;
+                });
+              },
+            )
+          : null,
     );
   }
 
@@ -226,24 +351,47 @@ class _RegisterPageState extends State<RegisterPage> {
                         TextField(
                           controller: _usernameController,
                           decoration: _inputDecoration("Username"),
+                          onSubmitted: (_) => _handleRegister(),
                         ),
                         SizedBox(height: height * 0.015),
                         TextField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: _inputDecoration("Alamat Email"),
+                          onSubmitted: (_) => _handleRegister(),
                         ),
                         SizedBox(height: height * 0.015),
                         TextField(
                           controller: _passwordController,
-                          obscureText: true,
-                          decoration: _inputDecoration("Password"),
+                          obscureText: !_isPasswordVisible,
+                          decoration: _inputDecoration("Password", isPassword: true),
+                          onSubmitted: (_) => _handleRegister(),
                         ),
                         SizedBox(height: height * 0.015),
                         if (_errorMessage != null)
-                          Text(
-                            _errorMessage!,
-                            style: TextStyle(color: Colors.red),
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            margin: EdgeInsets.only(bottom: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              border: Border.all(color: Colors.red.shade200),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red, size: 20),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         SizedBox(height: height * 0.015),
                         SizedBox(
@@ -255,15 +403,24 @@ class _RegisterPageState extends State<RegisterPage> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
+                              elevation: _isLoading ? 0 : 2,
                             ),
                             onPressed: _isLoading ? null : _handleRegister,
                             child: _isLoading
-                                ? CircularProgressIndicator(color: Colors.white)
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
                                 : Text(
                                     "Daftar",
                                     style: TextStyle(
                                       fontSize: 15, // sedikit lebih kecil
                                       color: Colors.white,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                           ),

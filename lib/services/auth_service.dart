@@ -17,18 +17,15 @@ class AuthService {
       }),
     );
 
+    final body = jsonDecode(response.body);
+
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-
-      // Simpan token kalau ada
-      if (data['success'] == true && data['data']?['token'] != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', data['data']['token']);
-      }
-
-      return data;
+      return body;
+    } else if (response.statusCode == 401) {
+      // khusus salah email/password
+      throw Exception(body["message"] ?? "Email atau password salah");
     } else {
-      throw Exception("Login gagal: ${response.body}");
+      throw Exception(body["message"] ?? "Terjadi kesalahan (${response.statusCode})");
     }
   }
 
@@ -45,18 +42,12 @@ class AuthService {
       }),
     );
 
+    final body = jsonDecode(response.body);
+
     if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-
-      // Simpan token kalau ada
-      if (data['success'] == true && data['data']?['token'] != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', data['data']['token']);
-      }
-
-      return data;
+      return body;
     } else {
-      throw Exception("Register gagal: ${response.body}");
+      throw Exception(body["message"] ?? "Terjadi kesalahan saat register");
     }
   }
 

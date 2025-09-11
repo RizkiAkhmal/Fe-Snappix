@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../main_page.dart'; // Pastikan MainPage sudah dibuat
 
@@ -16,9 +17,94 @@ class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
 
   bool _isLoading = false;
+  bool _isPasswordVisible = false;
   String? _errorMessage;
 
+  // Method untuk menampilkan alert dialog
+  void _showAlert(String title, String message, {bool isSuccess = false}) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle : Icons.error,
+                color: isSuccess ? Colors.green : Colors.red,
+                size: 24,
+              ),
+              SizedBox(width: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isSuccess ? Colors.green : Colors.red,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'OK',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        );
+      },
+    );
+  }
+
+
+  // Validasi input sebelum login
+  bool _validateInputs() {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (email.isEmpty) {
+      _showAlert('Input Tidak Lengkap', 'Alamat email tidak boleh kosong.');
+      return false;
+    }
+
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      _showAlert('Format Email Salah', 'Mohon masukkan alamat email yang valid.');
+      return false;
+    }
+
+    if (password.isEmpty) {
+      _showAlert('Input Tidak Lengkap', 'Password tidak boleh kosong.');
+      return false;
+    }
+
+    if (password.length < 6) {
+      _showAlert('Password Terlalu Pendek', 'Password minimal 6 karakter.');
+      return false;
+    }
+
+    return true;
+  }
+
   Future<void> _handleLogin() async {
+    // Validasi input terlebih dahulu
+    if (!_validateInputs()) {
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -30,30 +116,84 @@ class _LoginPageState extends State<LoginPage> {
         _passwordController.text.trim(),
       );
 
+      // Debug: Print response untuk melihat struktur
+      print('Login response: $result');
+
       if (result["success"] == true) {
+        // Response structure: {success: true, user: {...}, token: "..."}
         final token = result["token"];
-        final name = result["user"]["name"];
-          final user = result["user"];
+        final user = result["user"];
+        
+        if (token != null && user != null) {
+          final name = user["name"] ?? "User";
+          final userId = user["id"]?.toString() ?? "";
+          final username = user["username"] ?? "";
+          final avatar = user["avatar"] ?? "";
 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString("token", token);
-        await prefs.setString("name", name);
-        await prefs.setString("user_id", user["id"].toString());
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString("token", token);
+          await prefs.setString("name", name);
+          await prefs.setString("user_id", userId);
+          await prefs.setString("username", username);
+          await prefs.setString("avatar", avatar);
 
-        Navigator.pushReplacement(
-  context,
-  MaterialPageRoute(builder: (context) => MainPage(token: token)),
-);
+          // Tampilkan alert sukses
+          _showAlert(
+            'Login Berhasil!', 
+            'Selamat datang, $name!',
+            isSuccess: true
+          );
+
+          // Tunggu sebentar untuk user melihat alert, kemudian navigate
+          await Future.delayed(Duration(milliseconds: 1500));
+          
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => MainPage(token: token)),
+          );
+        } else {
+          // Token atau user tidak ada
+          final errorMsg = "Response server tidak lengkap - token atau user tidak ditemukan";
+          setState(() {
+            _errorMessage = errorMsg;
+          });
+          _showAlert('Login Gagal', errorMsg);
+        }
 
       } else {
+        // Login gagal
+        final errorMsg = result["message"] ?? "Email atau password salah";
         setState(() {
-          _errorMessage = result["message"] ?? "Email atau password salah";
+          _errorMessage = errorMsg;
         });
+        
+        // Tampilkan alert error
+        _showAlert('Login Gagal', errorMsg);
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = "Terjadi kesalahan: ${e.toString()}";
-      });
+  print('Login error: $e');
+  String errorMsg;
+  
+  if (e.toString().contains('NoSuchMethodError')) {
+    errorMsg = "Format response server tidak sesuai";
+  } else if (e.toString().contains('SocketException')) {
+    errorMsg = "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
+  } else if (e.toString().contains('FormatException')) {
+    errorMsg = "Response server tidak valid";
+  } else {
+    // Hilangkan prefix "Exception: " kalau ada
+    errorMsg = e.toString().replaceFirst('Exception: ', '');
+  }
+  
+  setState(() {
+    _errorMessage = errorMsg;
+  });
+      
+      // Tampilkan alert untuk error
+      _showAlert(
+        'Kesalahan Login', 
+        errorMsg
+      );
     } finally {
       setState(() {
         _isLoading = false;
@@ -61,7 +201,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  InputDecoration _inputDecoration(String label) {
+  InputDecoration _inputDecoration(String label, {bool isPassword = false}) {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: Colors.red),
@@ -73,7 +213,35 @@ class _LoginPageState extends State<LoginPage> {
         borderSide: BorderSide(color: Colors.red),
         borderRadius: BorderRadius.circular(8),
       ),
+      errorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderSide: BorderSide(color: Colors.red.shade700, width: 2),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      suffixIcon: isPassword
+          ? IconButton(
+              icon: Icon(
+                _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                color: Colors.red,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isPasswordVisible = !_isPasswordVisible;
+                });
+              },
+            )
+          : null,
     );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -181,7 +349,7 @@ class _LoginPageState extends State<LoginPage> {
                           child: Text(
                             "Ciptakan kehidupan\nyang Anda sukai",
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: GoogleFonts.inter(
                               color: Colors.red,
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -194,18 +362,40 @@ class _LoginPageState extends State<LoginPage> {
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
                           decoration: _inputDecoration("Alamat Email"),
+                          onSubmitted: (_) => _handleLogin(),
                         ),
                         SizedBox(height: height * 0.03),
                         TextField(
                           controller: _passwordController,
-                          obscureText: true,
-                          decoration: _inputDecoration("Password"),
+                          obscureText: !_isPasswordVisible,
+                          decoration: _inputDecoration("Password", isPassword: true),
+                          onSubmitted: (_) => _handleLogin(),
                         ),
                         SizedBox(height: height * 0.025),
                         if (_errorMessage != null)
-                          Text(
-                            _errorMessage!,
-                            style: TextStyle(color: Colors.red),
+                          Container(
+                            padding: EdgeInsets.all(12),
+                            margin: EdgeInsets.only(bottom: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade50,
+                              border: Border.all(color: Colors.red.shade200),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.error_outline, color: Colors.red, size: 20),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _errorMessage!,
+                                    style: TextStyle(
+                                      color: Colors.red.shade700,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         SizedBox(height: height * 0.015),
                         SizedBox(
@@ -217,15 +407,24 @@ class _LoginPageState extends State<LoginPage> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
+                              elevation: _isLoading ? 0 : 2,
                             ),
                             onPressed: _isLoading ? null : _handleLogin,
                             child: _isLoading
-                                ? CircularProgressIndicator(color: Colors.white)
+                                ? SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  )
                                 : Text(
                                     "Masuk",
-                                    style: TextStyle(
+                                    style: GoogleFonts.inter(
                                       fontSize: 16,
                                       color: Colors.white,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                           ),
@@ -234,16 +433,23 @@ class _LoginPageState extends State<LoginPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text("Belum punya akun? "),
+                            Text(
+                              "Belum punya akun? ",
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
                             GestureDetector(
                               onTap: () {
                                 Navigator.pushNamed(context, '/register');
                               },
                               child: Text(
                                 "Daftar!",
-                                style: TextStyle(
+                                style: GoogleFonts.inter(
                                   color: Colors.red,
                                   fontWeight: FontWeight.bold,
+                                  fontSize: 14,
                                   decoration: TextDecoration.underline,
                                 ),
                               ),

@@ -154,7 +154,6 @@ class HomePageState extends State<HomePage> {
 class _PostCard extends StatefulWidget {
   final Post post;
   final String currentUserId;
-  
 
   const _PostCard({required this.post, required this.currentUserId});
 
@@ -187,11 +186,34 @@ class _PostCardState extends State<_PostCard> {
       onTapUp: (details) {
         _onTapUp(details);
         // pindah ke detail_post
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) =>
-                PostDetailPage(post: post), // ganti sesuai nama page detailmu
+        Navigator.of(context).push(
+          PageRouteBuilder(
+            transitionDuration:
+                const Duration(milliseconds: 450), // lebih smooth
+            reverseTransitionDuration:
+                const Duration(milliseconds: 350), // balik lebih cepat
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                PostDetailPage(post: post),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              const begin = Offset(1.0, 0.0); // masuk dari kanan
+              const end = Offset.zero;
+
+              final curve = Curves.easeOutQuart; // lebih smooth modern
+              final tween =
+                  Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+
+              return SlideTransition(
+                position: animation.drive(tween),
+                child: FadeTransition(
+                  // tambahan fade biar makin halus
+                  opacity: animation.drive(
+                    CurveTween(curve: Curves.easeIn),
+                  ),
+                  child: child,
+                ),
+              );
+            },
           ),
         );
       },

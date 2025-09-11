@@ -10,6 +10,7 @@ import 'album_detail_page.dart';
 import 'post_detail_page.dart';
 import 'login_page.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import '../services/album_service.dart';
 
 class ProfilePage extends StatefulWidget {
   final ValueNotifier<int>? refreshTrigger;
@@ -21,16 +22,18 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
+
 class _ProfilePageState extends State<ProfilePage> {
   late final ProfileService _service;
   late final PostService _postService;
+  AlbumService? _albumService; // tambahkan
+
   String? _token;
   String? _currentUserId;
   Map<String, dynamic>? _profile;
   List<Post> _myPosts = [];
   List<Album> _myAlbums = [];
   bool _loading = true;
-
   VoidCallback? _refreshListener;
 
   @override
@@ -54,6 +57,30 @@ class _ProfilePageState extends State<ProfilePage> {
       widget.refreshTrigger!.removeListener(_refreshListener!);
     }
     super.dispose();
+  }
+
+  Future<void> _deleteAlbum(Album album) async {
+    if (_token == null) return;
+
+    try {
+      _albumService ??= AlbumService(token: _token!); // pastikan service ada
+      await _albumService!.deleteAlbum(album.id!);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Album berhasil dihapus")),
+        );
+        setState(() {
+          _myAlbums.removeWhere((a) => a.id == album.id);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Gagal menghapus album: $e")),
+        );
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -324,33 +351,37 @@ class _ProfilePageState extends State<ProfilePage> {
                                   itemBuilder: (context, index) {
                                     final album = _myAlbums[index];
                                     return ListTile(
-                                      leading: CircleAvatar(
-                                          backgroundImage: album.coverUrl != null
-                                              ? NetworkImage(
-                                                  _buildImageUrl(album.coverUrl))
-                                              : null,
-                                          child: album.coverUrl == null
-                                              ? const Icon(
-                                                  Icons.photo_album_outlined,
-                                                  color: Colors.grey)
-                                              : null,
-                                      ),
-                                      title: Text(album.namaAlbum),
-                                      subtitle: Text(album.deskripsi),
-                                      onTap: () {
-                                          if (_token != null && album.id != null) {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (_) => AlbumDetailPage(
-                                                  albumId: album.id!,
-                                                  token: _token!,
-                                                ),
-                                              ),
-                                            ).then((_) => _loadData());
-                                          }
-                                      },
-                                    );
+  leading: CircleAvatar(
+    backgroundImage: album.coverUrl != null
+        ? NetworkImage(_buildImageUrl(album.coverUrl))
+        : null,
+    child: album.coverUrl == null
+        ? const Icon(Icons.photo_album_outlined, color: Colors.grey)
+        : null,
+  ),
+  title: Text(album.namaAlbum),
+  subtitle: Text(album.deskripsi),
+  trailing: IconButton(
+    icon: const Icon(Icons.delete, color: Colors.red),
+    onPressed: () {
+      _deleteAlbum(album);
+    },
+  ),
+  onTap: () {
+    if (_token != null && album.id != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AlbumDetailPage(
+            albumId: album.id!,
+            token: _token!,
+          ),
+        ),
+      ).then((_) => _loadData());
+    }
+  },
+);
+
                                   },
                                 ),
                         ],

@@ -213,6 +213,54 @@ class PostService {
     }
   }
 
+  // Ambil postingan milik user tertentu
+  Future<List<Post>> getPostsByUser(String token, int userId) async {
+    final headers = {
+      'Authorization': 'Bearer $token',
+      'Accept': 'application/json',
+    };
+
+    Future<List<Post>> tryParse(http.Response response) async {
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        List items = const [];
+        if (decoded is List) {
+          items = decoded;
+        } else if (decoded is Map<String, dynamic>) {
+          final dynamic data = decoded['data'];
+          if (data is List) {
+            items = data;
+          } else if (data is Map<String, dynamic> && data['data'] is List) {
+            items = data['data'];
+          } else if (decoded['posts'] is List) {
+            items = decoded['posts'];
+          }
+        }
+        return items.map((e) => Post.fromJson(e as Map<String, dynamic>)).toList();
+      }
+      throw Exception('Gagal mengambil postingan user: ${response.body}');
+    }
+
+    final candidates = <Uri>[
+      Uri.parse('$baseUrl/users/$userId/posts'),
+      Uri.parse('$baseUrl/user/$userId/posts'),
+      Uri.parse('$baseUrl/social/users/$userId/posts'),
+    ];
+
+    for (final uri in candidates) {
+      try {
+        final res = await http.get(uri, headers: headers);
+        if (res.statusCode == 200) {
+          return await tryParse(res);
+        }
+      } catch (_) {}
+    }
+
+    // Jika tidak ada endpoint khusus, ambil semua postingan lalu filter di client
+    final allPosts = await getPosts(token);
+    return allPosts.where((p) => p.userId == userId).toList();
+  }
+
   // ================== LIKE ==================
 
   Future<Map<String, dynamic>> likePost(String token, int postId) async {
