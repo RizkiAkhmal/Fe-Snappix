@@ -136,86 +136,31 @@ class ProfileService {
 
   /// Cari users berdasarkan query (nama/username/email)
   Future<List<Map<String, dynamic>>> searchUsers(String token, String query) async {
-    Future<List<Map<String, dynamic>>> tryParse(http.Response res) async {
-      if (res.statusCode == 200) {
-        final body = json.decode(res.body);
-        if (body is List) return body.cast<Map<String, dynamic>>();
-        if (body is Map<String, dynamic>) {
-          // Bentuk umum: { data: [...] }
-          final data = body['data'];
-          if (data is List) return data.cast<Map<String, dynamic>>();
-          // Paginasi Laravel: { data: { data: [...] } }
-          if (data is Map<String, dynamic> && data['data'] is List) {
-            return (data['data'] as List).cast<Map<String, dynamic>>();
-          }
-          // Alternatif: { users: [...] } atau { results: [...] }
-          if (body['users'] is List) return (body['users'] as List).cast<Map<String, dynamic>>();
-          if (body['results'] is List) return (body['results'] as List).cast<Map<String, dynamic>>();
-        }
-        return <Map<String, dynamic>>[];
-      }
-      throw Exception('HTTP ${res.statusCode}: ${res.body}');
-    }
-
-    List<Map<String, dynamic>> filterLocal(List<Map<String, dynamic>> items) {
-      final q = query.toLowerCase();
-      return items.where((u) {
-        final name = (u['name'] ?? u['nama'] ?? '').toString().toLowerCase();
-        final username = (u['username'] ?? '').toString().toLowerCase();
-        final email = (u['email'] ?? '').toString().toLowerCase();
-        return name.contains(q) || username.contains(q) || email.contains(q);
-      }).toList();
-    }
-
     final headers = {
       'Authorization': 'Bearer $token',
       'Accept': 'application/json',
     };
 
-    final candidates = <Uri>[
-      Uri.parse('$baseUrl/users/search?q=${Uri.encodeQueryComponent(query)}'),
-      Uri.parse('$baseUrl/users?search=${Uri.encodeQueryComponent(query)}'),
-      Uri.parse('$baseUrl/user/search?q=${Uri.encodeQueryComponent(query)}'),
-      // Beberapa API memakai param 'q' di /users
-      Uri.parse('$baseUrl/users?q=${Uri.encodeQueryComponent(query)}'),
-      // Ada juga yang pakai name langsung
-      Uri.parse('$baseUrl/users?name=${Uri.encodeQueryComponent(query)}'),
-      Uri.parse('$baseUrl/users?username=${Uri.encodeQueryComponent(query)}'),
-    ];
+    final uri = Uri.parse('$baseUrl/user/search?query=${Uri.encodeQueryComponent(query)}');
 
-    for (final uri in candidates) {
-      try {
-        final res = await http.get(uri, headers: headers);
-        if (res.statusCode == 200) {
-          final parsed = await tryParse(res);
-          if (parsed.isNotEmpty) return filterLocal(parsed);
+    // Debug print to log the request URL
+    print('Search request URL: $uri');
+
+    final res = await http.get(uri, headers: headers);
+
+    if (res.statusCode == 200) {
+      final body = json.decode(res.body);
+      if (body is Map<String, dynamic>) {
+        final data = body['data'];
+        if (data is List) {
+          return data.cast<Map<String, dynamic>>();
         }
-      } catch (_) {}
-    }
-
-    // Fallback: ambil semua users dan filter lokal jika endpoint tidak ada
-    for (final path in ['users', 'user']) {
-      try {
-        final allUsersUri = Uri.parse('$baseUrl/$path');
-        final res = await http.get(allUsersUri, headers: headers);
-        if (res.statusCode == 200) {
-          final parsed = await tryParse(res);
-          final filtered = filterLocal(parsed);
-          if (filtered.isNotEmpty) return filtered;
-        }
-      } catch (_) {}
-    }
-
-    // Final fallback: exact match by username, lalu bungkus sebagai list
-    try {
-      final exactUri = Uri.parse('$baseUrl/user/username/${Uri.encodeComponent(query)}');
-      final res = await http.get(exactUri, headers: headers);
-      if (res.statusCode == 200) {
-        final body = json.decode(res.body);
-        if (body is Map<String, dynamic>) return [body];
       }
-    } catch (_) {}
-
-    return <Map<String, dynamic>>[];
+      return <Map<String, dynamic>>[];
+    } else {
+      // Instead of throwing, return empty list to avoid error display
+      print('Search request failed: HTTP ${res.statusCode}: ${res.body}');
+      return <Map<String, dynamic>>[];
+    }
   }
 }
